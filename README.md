@@ -20,20 +20,9 @@
 ### Méthode 1 : Glisser-déposer (recommandé)
 1. Ouvrez **Mega Hopex** dans votre navigateur.
 2. Ouvrez la console du navigateur (**F12** ou **Ctrl+Shift+I**).
-3. Copiez-collez le code suivant dans la console et exécutez-le :
+3. Copiez le contenu du fichier **[sniper-map-v30.js](sniper-map-v30.js)** et collez-le dans la console, puis exécutez-le.
 
-   ```javascript
-   (function() {
-       const btn = document.createElement('a');
-       btn.href = "javascript:(" + function() { alert('Veuillez utiliser la méthode 2 pour installer le bookmarklet.'); }.toString() + ")();";
-       btn.innerText = "🎯 INSTALLER SNIPER MAP V30";
-       btn.style.cssText = "position:fixed;top:20px;right:20px;padding:20px;background:#0C419A;color:white;z-index:9999999;border-radius:8px;cursor:pointer;font-family:sans-serif;font-weight:bold;text-decoration:none;box-shadow:0 4px 6px rgba(0,0,0,0.2);";
-       document.body.appendChild(btn);
-       setTimeout(() => btn.remove(), 10000);
-   })();
-   ```
-
-   > ⚠️ **Note** : Ce code affiche un bouton temporaire. Pour une installation complète, utilisez la **méthode 2**.
+   > ⚠️ **Note** : Cette méthode installe directement Sniper Map sans bouton intermédiaire.
 
 ### Méthode 2 : Installation manuelle du bookmarklet
 1. Créez un nouveau **favori** dans votre navigateur.
