@@ -21,7 +21,7 @@
 Pour contourner les limitations de taille et de formatage de l'IHM de Edge/Chrome, utilisez notre page d'installation :
 
 1. Ouvrez la page **[install.html](install.html)** (ou son équivalent via GitHub Pages si configuré).
-2. Glissez et déposez (Drag & Drop) le bouton bleu **🎯 Sniper Map v30** directement dans votre **barre de favoris** du navigateur.
+2. Glissez et déposez (Drag & Drop) le bouton bleu **🎯 Sniper Map** directement dans votre **barre de favoris** du navigateur.
 3. Allez sur votre instance **Mega Hopex**, puis cliquez sur le favori pour activer l'outil.
 
 > 🔄 **Mise à jour transparente** : La page d'installation nettoie automatiquement les commentaires du script brut. Inutile de recréer le favori lors des prochaines mises à jour du code source sur GitHub !
