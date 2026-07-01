@@ -1,7 +1,10 @@
 /**
- * 🎯 SNIPER MAP - Version 30 (Stable)
+ * 🎯 SNIPER MAP - Version 31 (Stable)
  * Outil d'aide à la navigation, filtrage SVG et analyse pour Mega Hopex.
  * Charte graphique : Design System Ameli (Clair).
+ * V31 : Correction du détecteur de statut (Nouveau/Modifié/Supprimé) -
+ *       le rect porteur de la couleur est un FRÈRE du groupe texte, pas un enfant.
+ *       Ajout d'une pastille colorée + légende dans le dashboard.
  */
 (function() {
     // ---- CONFIGURATION DU DOM ET DES SÉLECTEURS ----
@@ -105,24 +108,130 @@
     let tOut;
 
     // 5. Analyseur géométrique des statuts Hopex (Nouveau, Modifié, Supprimé)
-    const getStat = (g) => {
-        let sh = g.querySelector('rect, path, polygon, circle');
-        if (!sh) return null;
-        let f = sh.getAttribute('fill') || '';
-        if (/linear(10|11)/i.test(f)) return { c: '#22c55e', s: 'N' }; // Vert = Nouveau
-        if (/linear(8|9)/i.test(f)) return { c: '#f59e0b', s: 'M' };   // Orange = Modifié
-        if (/linear(6|7)/i.test(f)) return { c: '#ef4444', s: 'S' };   // Rouge = Supprimé
+    //    NOTE V34 : l'approche "je remonte de N niveaux dans le DOM" (V32/V33) est ABANDONNÉE.
+    //    Les retours terrain montrent qu'elle remonte parfois jusqu'à un conteneur partagé par
+    //    des dizaines de composants (toute une rangée du diagramme), donnant la même liste de
+    //    IDs Linear pour tout le monde -> inexploitable.
+    //    Nouvelle approche GÉOMÉTRIQUE : on construit une seule fois la liste de TOUTES les formes
+    //    du SVG portant un fill "LinearN", avec leur bounding box. Pour chaque composant, on
+    //    cherche parmi ces formes celle(s) dont la bbox contient le centre du texte du composant,
+    //    et on retient la PLUS PETITE (la plus "précise", pour éviter d'attraper un halo englobant
+    //    plusieurs boîtes voisines). Le mapping numéro -> statut reste à valider (mode diagnostic).
+    let debugMode = false; // activé/désactivé via le bouton 🐞 du panneau
+
+    const classifyFill = (id) => {
+        if (id === null || id === undefined) return null;
+        // Mapping V35 - basé sur des cas confirmés sur le terrain (et non plus une hypothèse) :
+        //   10 -> Nouveau   (confirmé : "ENS EIP Vaccination")
+        //   6  -> Modifié   (confirmé : "ENS EIP Notification prévention" + "ENS Batch notification prévention quotidiennes")
+        //   11 -> Supprimé  (confirmé : "Archivé ENS Batch notification prévention")
+        //   4  -> neutre (aucun changement) -> pas de statut, valeur la plus fréquente
+        //   7, 8, 9 -> inconnus pour l'instant, aucun statut affiché tant que non validés
+        if (id === '10') return { c: '#22c55e', s: 'N', label: 'Nouveau' };
+        if (id === '6')  return { c: '#f59e0b', s: 'M', label: 'Modifié' };
+        if (id === '11') return { c: '#ef4444', s: 'S', label: 'Supprimé' };
         return null;
     };
+
+    // Construit une seule fois (par scan) la liste de toutes les formes "LinearN" avec leur bbox.
+    function buildStatusShapeCache() {
+        let cache = [];
+        Q('svg rect, svg path, svg polygon, svg circle, svg ellipse').forEach(sh => {
+            let f = sh.getAttribute('fill') || '';
+            let m = f.match(/linear(\d+)/i);
+            if (!m) return;
+            try {
+                let b = sh.getBBox();
+                if (b.width > 0 && b.height > 0) cache.push({ id: m[1], box: b, area: b.width * b.height });
+            } catch (e) { /* getBBox peut échouer sur certaines formes non affichées */ }
+        });
+        return cache;
+    }
+
+    function buildStatusShapeStrokeCache() {
+        let cache = [];
+        Q('svg rect, svg path, svg polygon, svg circle, svg ellipse').forEach(sh => {
+            let f = sh.getAttribute('stroke') || '';
+            if (f == '') return;
+            try {
+                let b = sh.getBBox();
+                if (b.width > 0 && b.height > 0) cache.push({ id: f, box: b, area: b.width * b.height });
+            } catch (e) { /* getBBox peut échouer sur certaines formes non affichées */ }
+        });
+        return cache;
+    }
+
+    // Trouve, parmi le cache, la plus petite forme dont la bbox contient le centre de `bbox`.
+    function findStatusEntry(cache, bbox) {
+        let cx = bbox.x + bbox.width / 2, cy = bbox.y + bbox.height / 2, best = null;
+        for (let i = 0; i < cache.length; i++) {
+            let item = cache[i], sb = item.box;
+            if (cx >= sb.x - 1 && cx <= sb.x + sb.width + 1 && cy >= sb.y - 1 && cy <= sb.y + sb.height + 1) {
+                if (!best || item.area < best.area) best = item;
+            }
+        }
+        return best; // { id, box, area } ou null
+    }
+
+    function findAllStatusEntries(cache, bbox) {
+        const cx = bbox.x + bbox.width / 2;
+        const cy = bbox.y + bbox.height / 2;
+
+        const entries = cache
+            .filter(item =>
+                cx >= item.box.x - 1 &&
+                cx <= item.box.x + item.box.width + 1 &&
+                cy >= item.box.y - 1 &&
+                cy <= item.box.y + item.box.height + 1
+            )
+            .sort((a, b) => a.area - b.area);
+
+        // suppression des doublons
+        const ids = [];
+        const seen = new Set();
+
+        for (const e of entries) {
+            if (!seen.has(e.id)) {
+                seen.add(e.id);
+                ids.push(e.id);
+            }
+        }
+
+        return ids;
+    }
+
+    function determineStatus(ids) {
+        const key = ids.join(",");
+        if (key.includes("#009300")){
+            return {
+                c:"#22c55e",
+                s:"N",
+                label:"Nouveau"
+            };
+        }
+        if (key.includes("#a52a00")){
+            return {
+                c:"#f59e0b",
+                s:"I",
+                label:"Impacté"
+            };
+        }
+        return  {
+            c:"#8d8282",
+            s:"-",
+            label:"Pas de changement"
+        };;
+    }
 
     // 6. Construction HTML de l'Interface Utilisateur (Panneau principal)
     const p = D.createElement('div');
     p.className = P + ' r-pn';
     p.innerHTML = `
         <div class="r-drg" style="font-weight:bold; color:#0C419A; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid #E7ECF5; padding-bottom:4px;">
-            <span>🎯 SNIPER MAP V30</span>
+            <span>🎯 SNIPER MAP V35</span>
             <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
                 <span id="r-rst" style="color:#006386">↺ Reset</span>
+                <span id="r-dbg" title="Mode diagnostic : affiche les IDs Linear bruts">🐞</span>
                 <span id="r-mn">─</span>
                 <span id="r-c">✕</span>
             </div>
@@ -174,6 +283,11 @@
                 <button id="r-db-cls" style="background:#0C419A; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold">✕ Fermer</button>
             </div>
         </div>
+        <div style="display:flex; gap:16px; font-size:10px; color:#545859; padding:8px 0; border-bottom:1px solid #E7ECF5; margin-bottom:6px;">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:middle;"></span>Nouveau</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:5px;vertical-align:middle;"></span>Modifié ou Supprimé</span>
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8d8282;margin-right:5px;vertical-align:middle;"></span>Pas de changement</span>
+        </div>
         <div id="r-db-grid" class="r-gr"></div>
     `;
     D.body.appendChild(db);
@@ -181,7 +295,7 @@
     // ---- GESTION DES ÉVÉNEMENTS & SOURIS (DRAG & DROP / RESIZE) ----
     let isDragging = false, oX, oY;
     p.querySelector('.r-drg').onmousedown = (e) => {
-        if (['r-mn', 'r-rst', 'r-c'].includes(e.target.id)) return;
+        if (['r-mn', 'r-rst', 'r-c', 'r-dbg'].includes(e.target.id)) return;
         isDragging = true;
         oX = e.clientX - p.getBoundingClientRect().left;
         oY = e.clientY - p.getBoundingClientRect().top;
@@ -235,6 +349,14 @@
         p.classList.toggle('min');
         this.textContent = p.classList.contains('min') ? '🗖' : '─';
     };
+
+    // Bascule du mode diagnostic (affiche les IDs Linear bruts au lieu du statut deviné)
+    E('r-dbg').onclick = function() {
+        debugMode = !debugMode;
+        this.style.opacity = debugMode ? '1' : '0.35';
+        runFilters();
+    };
+    E('r-dbg').style.opacity = '0.35';
 
     // ---- FONCTIONS CŒUR DE NAVIGATION ET FILTRAGE ----
     function resetSVGViewBoxes() {
@@ -301,6 +423,28 @@
         }
     }
 
+    function trierPrioriteStatut(liste) {
+        // 1. Définition de l'ordre des priorités (le plus petit chiffre est trié en premier)
+        const priorites = {
+            'N': 1,
+            'I': 2
+        };
+
+        // 2. Application du tri
+        return liste.sort((a, b) => {
+            // On récupère le code (avec une valeur par défaut au cas où st ou st.s est absent)
+            const statutA = a.st?.s;
+            const statutB = b.st?.s;
+
+            // Si le statut n'est ni N ni I, on lui attribue une priorité infinie (trié à la fin)
+            const poidsA = priorites[statutA] ?? Infinity;
+            const poidsB = priorites[statutB] ?? Infinity;
+
+            // Comparaison numérique des poids
+            return poidsA - poidsB;
+    });
+    }
+
     // Gestionnaire de la saisie utilisateur (Recherche textuelle)
     function searchMapText() {
         targets = [];
@@ -364,7 +508,8 @@
         
         let count = 0, filterCoords = [], gridData = {};
         activeFilters.forEach(a => gridData[a.id] = []);
-        
+        //const statusCache = buildStatusShapeCache(); // une seule construction pour tout le scan
+        const statusCache = buildStatusShapeStrokeCache();
         Q('svg text, svg tspan').forEach(el => {
             let g = el.closest('g'); 
             if (!g) return;
@@ -382,10 +527,11 @@
                 g.appendChild(createSVGCircle(A, cx, cy, match.c));
                 
                 let cleanedText = g.textContent.replace(/\s+/g, ' ').trim();
-                let statusInfo = getStat(g); // Récupération du statut N, M, S
-                
+                const ids = findAllStatusEntries(statusCache, b);
+
+                const statusInfo = determineStatus(ids);
                 if (!gridData[match.id].find(i => i.t === cleanedText)) {
-                    gridData[match.id].push({ t: cleanedText, st: statusInfo });
+                    gridData[match.id].push({ t: cleanedText, st: statusInfo, raw: ids });
                 }
             }
         });
@@ -397,7 +543,8 @@
             E('r-db-box').style.display = "block"; 
             let htmlGrid = "";
             activeFilters.forEach(a => {
-                let items = gridData[a.id];
+                let items = trierPrioriteStatut(gridData[a.id]);
+                
                 if (items.length > 0) {
                     htmlGrid += `
                         <div class="r-cd" style="border-top:4px solid ${a.c}">
@@ -407,14 +554,33 @@
                             </div>
                             <div style="display:flex; flex-direction:column; overflow-y:auto; max-height:400px !important; gap:2px !important;">
                                 ${items.map(i => {
-                                    let badge = i.st ? `<span style="background:${i.st.c}; color:white; font-size:9px; padding:0 4px; border-radius:4px; margin-right:5px; font-weight:bold;">${i.st.s}</span>` : '';
-                                    return `<div class="r-it" title="${i.t}">${badge}${i.t}</div>`;
+                                    console.info(i)
+                                    if (debugMode) {
+                                        let rawTxt = i.raw.length ? i.raw.join(',') : '∅';
+                                        let badge = `<span style="display:inline-block; background:#545859; color:#fff; font-size:9px; font-family:monospace; padding:1px 5px; border-radius:4px; margin-right:6px; flex-shrink:0;">#${rawTxt}</span>`;
+                                        return `<div class="r-it" style="border-left:3px solid ${a.c} !important;" title="Linear brut(s): ${rawTxt}">${badge}${i.t}</div>`;
+                                    }
+                                    let dot = i.st ? `<span style="display:inline-block; width:9px; height:9px; min-width:9px; border-radius:50%; background:${i.st.c}; margin-right:6px; vertical-align:middle;"></span>` : '';
+                                    let tip = (i.st ? i.st.label + ' — ' : '') + i.t;
+                                    return `<div class="r-it" style="border-left:3px solid ${a.c} !important;" title="${tip}">${dot}${i.t}</div>`;
                                 }).join('')}
                             </div>
                         </div>`;
                 }
             });
             E('r-db-grid').innerHTML = htmlGrid;
+            
+            if (debugMode) {
+                let debugTable = [];
+                activeFilters.forEach(a => gridData[a.id].forEach(i => debugTable.push({
+                    Composant: i.t,
+                    Categorie: a.n,
+                    'Linear bruts': i.raw.join(',') || '∅',
+                    'Statut devine': i.st ? i.st.label : '-'
+                })));
+                console.log('%c🎯 SNIPER MAP - Diagnostic Linear IDs (copie ce tableau et envoie-le)', 'color:#0C419A;font-weight:bold;');
+                console.table(debugTable);
+            }
         } else { 
             E('r-db-box').style.display = "none"; 
             closeDB(); 
