@@ -1,99 +1,122 @@
 /**
- * 🎯 SNIPER MAP - Version 31 (Stable)
+ * 🎯 SNIPER MAP - Version 35 (Clean Code + Guard Clauses)
  * Outil d'aide à la navigation, filtrage SVG et analyse pour Mega Hopex.
  * Charte graphique : Design System Ameli (Clair).
- * V31 : Correction du détecteur de statut (Nouveau/Modifié/Supprimé) -
- *       le rect porteur de la couleur est un FRÈRE du groupe texte, pas un enfant.
- *       Ajout d'une pastille colorée + légende dans le dashboard.
  */
 (function() {
-    // ---- CONFIGURATION DU DOM ET DES SÉLECTEURS ----
+    // ============ CONFIGURATION ET CONSTANTES ============
+    
+    // DOM Shortcuts
     const D = document;
     const Q = s => D.querySelectorAll(s);
     const E = i => D.getElementById(i);
     const NS = "http://www.w3.org/2000/svg";
     
-    // Classes et Identifiants uniques pour éviter les collisions
-    const W = "r-s-tg";  // Classe d'animation de la cible principale
-    const A = "r-a-tg";  // Classe d'animation des pastilles de filtres
-    const P = "r-pan";   // Classe du panneau de commande principal
+    // Classes CSS
+    const CSS = {
+        TARGET_CIRCLE: "r-s-tg",
+        FILTER_CIRCLE: "r-a-tg",
+        PANEL: "r-pan",
+        DRAGGABLE: "r-drg"
+    };
 
-    // 1. Nettoyage initial de toute ancienne instance présente dans la page
-    Q('.' + P + ', .' + W + ', .' + A + ', [id=r-sty], [id=r-db-mdl]').forEach(e => e.remove());
+    // Z-index
+    const ZINDEX = {
+        MODAL_RESIZE: 2147483647,
+        DASHBOARD: 2147483646
+    };
 
-    // 2. Injection des styles isolés (Charte Ameli / Assurance Maladie)
-    const styleElement = D.createElement('style');
-    styleElement.id = 'r-sty';
-    styleElement.innerHTML = `
-        .${W}, .${A} { pointer-events: none !important; }
-        
-        @keyframes pulseA {
-            0%, 100% { stroke-width: 5; fill-opacity: .1; r: 35; }
-            50% { stroke-width: 9; fill-opacity: .25; r: 50; }
-        }
-        @keyframes pulseW {
-            0%, 100% { stroke-width: 4; r: 55; stroke-dasharray: 4 4; }
-            50% { stroke-width: 6; r: 70; stroke-dasharray: 8 4; }
-        }
-        
-        .${W} { animation: pulseW 1s infinite linear !important; stroke: #0C419A; fill: none; }
-        .${A} { animation: pulseA 1.4s infinite ease-in-out !important; }
-        
-        .r-drg { cursor: move; user-select: none; }
-        
-        .${P} { 
-            position: fixed; top: 80px; left: 20px; width: 340px; background: #FFFFFF; 
-            color: #222324; padding: 12px; border-radius: 8px; z-index: 2147483647; 
-            font-family: sans-serif; border: 2px solid #0C419A; box-sizing: border-box; 
-            transition: height .2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        }
-        
-        .${P}.min { height: 42px !important; width: 180px !important; overflow: hidden !important; border-color: #006386 !important; }
-        .${P}.min > div:not(.r-drg) { display: none !important; }
-        
-        .r-pn input { 
-            width: 100%; padding: 8px; background: #FFFFFF; color: #0C419A; 
-            border: 1px solid #545859; border-radius: 4px; font-size: 12px; 
-            outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 6px; 
-        }
-        .r-pn button { padding: 6px; color: #FFFFFF; background: #0C419A; border-radius: 4px; font-size: 12px; cursor: pointer; box-sizing: border-box; border: none; }
-        
-        .r-db { 
-            position: fixed; top: 0; right: 0; left: auto; width: 33vw; height: 100vh; 
-            background: #FFFFFF; z-index: 2147483646; color: #222324; font-family: sans-serif; 
-            padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; 
-            opacity: 0; pointer-events: none; transform: translateX(100%); 
-            transition: transform .25s ease, opacity .25s ease; border-left: 3px solid #0C419A; 
-            box-shadow: -5px 0 15px rgba(0,0,0,0.1); 
-        }
-        
-        .r-gr { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; flex: 1; overflow-y: auto; padding: 15px 0; align-content: start; }
-        .r-cd { background: #F9F9F9; border: 1px solid #E7ECF5; border-top: 4px solid var(--c); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; box-sizing: border-box; max-height: 85vh !important; }
-        
-        .r-it { 
-            color: #222324 !important; font-size: 11px !important; background: #FFFFFF !important; 
-            padding: 6px 8px !important; border-radius: 4px !important; text-overflow: ellipsis !important; 
-            white-space: nowrap !important; overflow: hidden !important; border-left: 2px solid var(--c) !important; 
-            margin: 3px 0 0 0 !important; display: block !important; position: relative !important; 
-            height: auto !important; min-height: 26px !important; line-height: 14px !important; 
-            box-sizing: border-box !important; flex-shrink: 0 !important; border: 1px solid #E7ECF5 !important; 
-        }
-        
-        #r-ck-g { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px 12px !important; width: 100 !important; box-sizing: border-box !important; }
-        .r-lbl { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; width: auto !important; background: none !important; white-space: nowrap !important; font-weight: bold !important; height: auto !important; color: #222324 !important; }
-        .r-ck { width: 14px !important; height: 14px !important; min-width: 14px !important; margin: 0 !important; padding: 0 !important; display: inline-block !important; cursor: pointer !important; position: static !important; appearance: checkbox !important; -webkit-appearance: checkbox !important; }
-    `;
-    D.head.appendChild(styleElement);
+    // Dimensions Panel
+    const PANEL_DIMS = {
+        TOP_OFFSET: 80,
+        LEFT_OFFSET: 20,
+        WIDTH: 340,
+        MIN_WIDTH: 180,
+        MIN_HEIGHT: 42
+    };
 
-    // 3. Sauvegarde de l'état d'origine du zoom SVG (viewBox) pour pouvoir faire un Reset
-    Q('svg').forEach(v => {
-        if (v.hasAttribute('viewBox') && !v.hasAttribute('data-ro')) {
-            v.setAttribute('data-ro', v.getAttribute('viewBox'));
-        }
-    });
+    // Dimensions Dashboard
+    const DASHBOARD_DIMS = {
+        WIDTH_PERCENT: 33,
+        MIN_WIDTH: 280,
+        MAX_WIDTH_PERCENT: 0.95,
+        HANDLE_WIDTH: 8,
+        HANDLE_LEFT: -4
+    };
 
-    // 4. Cartographie des Filtres Technologiques
-    const T = [
+    // SVG Zoom
+    const ZOOM = {
+        WIDTH: 1400,
+        HEIGHT: 900
+    };
+
+    // Géométrie & Proximité
+    const GEOMETRY = {
+        PROXIMITY_THRESHOLD: 45,
+        BBOX_TOLERANCE: 1,
+        DUPLICATE_CHECK_DISTANCE: 45
+    };
+
+    // Animations
+    const ANIMATION = {
+        PULSE_DURATION: "1s",
+        PULSE_A_DURATION: "1.4s",
+        SEARCH_DEBOUNCE_MS: 150,
+        TRANSITION_SPEED: ".25s"
+    };
+
+    // Pulses Radii
+    const PULSE_RADII = {
+        A: { MIN: 35, MAX: 50 },
+        W: { MIN: 55, MAX: 70 }
+    };
+
+    // Pulses Stroke Width
+    const PULSE_STROKE = {
+        A: { MIN: 5, MAX: 9 },
+        W: { MIN: 4, MAX: 6 }
+    };
+
+    // Tailles d'éléments
+    const SIZES = {
+        DOT: 9,
+        SMALL_DOT: 8,
+        CHECKBOX: 14,
+        FONT_SM: "11px",
+        FONT_XS: "9px",
+        BORDER_RADIUS: "4px",
+        PADDING_SM: "6px 8px",
+        PADDING_MD: "8px",
+        BADGE_PADDING: "1px 5px"
+    };
+
+    // Couleurs Ameli
+    const COLORS = {
+        PRIMARY: '#0C419A',
+        SECONDARY: '#006386',
+        SUCCESS: '#22c55e',
+        WARNING: '#f59e0b',
+        DANGER: '#ef4444',
+        NEUTRAL: '#8d8282',
+        DARK_TEXT: '#222324',
+        LIGHT_BG: '#FFFFFF',
+        BORDER: '#E7ECF5',
+        LIGHT_GRAY: '#F9F9FA',
+        GRAY_TEXT: '#545859',
+        BADGE_BG: '#545859'
+    };
+
+    // Status Linear
+    const STATUS_LINEAR = {
+        NEW: { id: '10', color: COLORS.SUCCESS, code: 'N', label: 'Nouveau' },
+        MODIFIED: { id: '6', color: COLORS.WARNING, code: 'M', label: 'Modifié' },
+        DELETED: { id: '11', color: COLORS.DANGER, code: 'S', label: 'Supprimé' },
+        IMPACTED_COLOR: '#a52a00',
+        NEW_COLOR: '#009300'
+    };
+
+    // Tech Filters
+    const TECH_FILTERS = [
         { id: 'eip', n: 'EIP', k: ['eip'], c: '#006386' },
         { id: 'top', n: 'Topic', k: ['topic'], c: '#6a0dad' },
         { id: 'bdd', n: 'BDD', k: ['bdd', 'base'], c: '#D97706' },
@@ -102,75 +125,559 @@
         { id: 'btc', n: 'Batch', k: ['batch'], c: '#F0B323' }
     ];
 
-    let targets = [];
-    let I = 0;
-    let mode = "target";
-    let tOut;
-
-    // 5. Analyseur géométrique des statuts Hopex (Nouveau, Modifié, Supprimé)
-    //    NOTE V34 : l'approche "je remonte de N niveaux dans le DOM" (V32/V33) est ABANDONNÉE.
-    //    Les retours terrain montrent qu'elle remonte parfois jusqu'à un conteneur partagé par
-    //    des dizaines de composants (toute une rangée du diagramme), donnant la même liste de
-    //    IDs Linear pour tout le monde -> inexploitable.
-    //    Nouvelle approche GÉOMÉTRIQUE : on construit une seule fois la liste de TOUTES les formes
-    //    du SVG portant un fill "LinearN", avec leur bounding box. Pour chaque composant, on
-    //    cherche parmi ces formes celle(s) dont la bbox contient le centre du texte du composant,
-    //    et on retient la PLUS PETITE (la plus "précise", pour éviter d'attraper un halo englobant
-    //    plusieurs boîtes voisines). Le mapping numéro -> statut reste à valider (mode diagnostic).
-    let debugMode = false; // activé/désactivé via le bouton 🐞 du panneau
-
-    const classifyFill = (id) => {
-        if (id === null || id === undefined) return null;
-        // Mapping V35 - basé sur des cas confirmés sur le terrain (et non plus une hypothèse) :
-        //   10 -> Nouveau   (confirmé : "ENS EIP Vaccination")
-        //   6  -> Modifié   (confirmé : "ENS EIP Notification prévention" + "ENS Batch notification prévention quotidiennes")
-        //   11 -> Supprimé  (confirmé : "Archivé ENS Batch notification prévention")
-        //   4  -> neutre (aucun changement) -> pas de statut, valeur la plus fréquente
-        //   7, 8, 9 -> inconnus pour l'instant, aucun statut affiché tant que non validés
-        if (id === '10') return { c: '#22c55e', s: 'N', label: 'Nouveau' };
-        if (id === '6')  return { c: '#f59e0b', s: 'M', label: 'Modifié' };
-        if (id === '11') return { c: '#ef4444', s: 'S', label: 'Supprimé' };
-        return null;
+    // State
+    const STATE = {
+        targets: [],
+        currentIndex: 0,
+        mode: "target",
+        searchTimeout: null,
+        isDragging: false,
+        isResizing: false
     };
 
-    // Construit une seule fois (par scan) la liste de toutes les formes "LinearN" avec leur bbox.
-    function buildStatusShapeCache() {
-        let cache = [];
-        Q('svg rect, svg path, svg polygon, svg circle, svg ellipse').forEach(sh => {
-            let f = sh.getAttribute('fill') || '';
-            let m = f.match(/linear(\d+)/i);
-            if (!m) return;
-            try {
-                let b = sh.getBBox();
-                if (b.width > 0 && b.height > 0) cache.push({ id: m[1], box: b, area: b.width * b.height });
-            } catch (e) { /* getBBox peut échouer sur certaines formes non affichées */ }
-        });
-        return cache;
+    // ============ PRÉDICATS D'INITIALISATION ============
+
+    function hasExistingInstances() {
+        return Q('.' + CSS.PANEL + ', .' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE + ', [id=r-sty], [id=r-db-mdl]').length > 0;
     }
+
+    function hasSVGViewBox(svg) {
+        return svg.hasAttribute('viewBox');
+    }
+
+    function hasSavedViewBox(svg) {
+        return svg.hasAttribute('data-ro');
+    }
+
+    function needsSavedViewBox(svg) {
+        return hasSVGViewBox(svg) && hasSavedViewBox(svg) === false;
+    }
+
+    // ============ PRÉDICATS DE FORME ============
+
+    function hasStrokeAttribute(element) {
+        return element.hasAttribute('stroke');
+    }
+
+    function isValidStroke(stroke) {
+        return stroke !== '';
+    }
+
+    function hasValidBBox(bbox) {
+        return bbox.width > 0 && bbox.height > 0;
+    }
+
+    // ============ PRÉDICATS GÉOMÉTRIQUES ============
+
+    function isPointInBBox(px, py, bbox) {
+        const tolerance = GEOMETRY.BBOX_TOLERANCE;
+        return px >= bbox.x - tolerance &&
+               px <= bbox.x + bbox.width + tolerance &&
+               py >= bbox.y - tolerance &&
+               py <= bbox.y + bbox.height + tolerance;
+    }
+
+    function isDuplicateLocation(coords, cx, cy, threshold = GEOMETRY.PROXIMITY_THRESHOLD) {
+        return coords.some(pt => Math.hypot(pt.x - cx, pt.y - cy) < threshold);
+    }
+
+    // ============ PRÉDICATS DE TEXTE ============
+
+    function isLegendItem(text) {
+        return /^\s*\d{5}\s*[-–]/.test(text.trim());
+    }
+
+    function matchesSearchQuery(text, query) {
+        return text.toLowerCase().includes(query);
+    }
+
+    function isControlButton(elementId) {
+        return ['r-mn', 'r-rst', 'r-c'].includes(elementId);
+    }
+
+    function shouldAllowDragStart(elementId) {
+        return isControlButton(elementId) === false;
+    }
+
+    // ============ PRÉDICATS DE STATUT ============
+
+    function isNewStatus(ids) {
+        return ids.join(",").includes(STATUS_LINEAR.NEW_COLOR);
+    }
+
+    function isImpactedStatus(ids) {
+        return ids.join(",").includes(STATUS_LINEAR.IMPACTED_COLOR);
+    }
+
+    function hasStatus(item) {
+        return item.st !== null && item.st !== undefined;
+    }
+
+    // ============ PRÉDICATS DE FILTRE ============
+
+    function isFilterActive(checkbox) {
+        return checkbox.checked;
+    }
+
+    function isValidFilter(filter) {
+        return filter !== null && filter !== undefined;
+    }
+
+    function hasFiltersActive(filters) {
+        return filters.length > 0;
+    }
+
+    function filterMatchesComponent(filter, componentText) {
+        return filter.k.some(kwd => matchesSearchQuery(componentText, kwd));
+    }
+
+    // ============ PRÉDICATS D'INTERFACE ============
+
+    function hasTargets() {
+        return STATE.targets.length > 0;
+    }
+
+    function hasNoTargets() {
+        return STATE.targets.length === 0;
+    }
+
+    function isTargetMode() {
+        return STATE.mode === "target";
+    }
+
+    function isGlobalMode() {
+        return STATE.mode === "global";
+    }
+
+    function isPanelMinimized() {
+        const panel = document.querySelector('.' + CSS.PANEL);
+        return panel && panel.classList.contains('min');
+    }
+
+    function shouldSkipZoom(flag) {
+        return flag === true;
+    }
+
+    // ============ PRÉDICATS D'ÉVÉNEMENTS ============
+
+    function isDraggingPanel() {
+        return STATE.isDragging;
+    }
+
+    function isNotDraggingPanel() {
+        return STATE.isDragging === false;
+    }
+
+    function isResizingDashboard() {
+        return STATE.isResizing;
+    }
+
+    function isNotResizingDashboard() {
+        return STATE.isResizing === false;
+    }
+
+    function isEscapeKey(key) {
+        return key === 'Escape';
+    }
+
+    function isValidResizeWidth(width, minWidth, maxWidth) {
+        return width > minWidth && width < maxWidth;
+    }
+
+    // ============ PRÉDICATS DE COMPOSANT ============
+
+    function hasValidGroup(element) {
+        const group = element.closest('g');
+        return group !== null;
+    }
+
+    function hasInvalidGroup(element) {
+        return hasValidGroup(element) === false;
+    }
+
+    function hasValidCenter(center) {
+        return center !== null;
+    }
+
+    function hasInvalidCenter(center) {
+        return center === null;
+    }
+
+    function componentHasGroup(element) {
+        return element.closest('g') !== null;
+    }
+
+    function componentHasNoGroup(element) {
+        return element.closest('g') === null;
+    }
+
+    function componentHasParentSVG(element) {
+        return element.closest('svg') !== null;
+    }
+
+    // ============ INITIALISATIONS ============
+
+    function initializeApp() {
+        if (hasExistingInstances()) {
+            cleanupPreviousInstances();
+        }
+        initializeSVGViewBoxes();
+        createStyleSheet();
+        createPanelUI();
+        createDashboardUI();
+        attachEventListeners();
+        performInitialSearch();
+    }
+
+    function cleanupPreviousInstances() {
+        Q('.' + CSS.PANEL + ', .' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE + ', [id=r-sty], [id=r-db-mdl]')
+            .forEach(e => e.remove());
+    }
+
+    function initializeSVGViewBoxes() {
+        Q('svg').forEach(v => {
+            if (needsSavedViewBox(v)) {
+                v.setAttribute('data-ro', v.getAttribute('viewBox'));
+            }
+        });
+    }
+
+    // ============ FEUILLE DE STYLES ============
+
+    function createStyleSheet() {
+        const styleElement = D.createElement('style');
+        styleElement.id = 'r-sty';
+        styleElement.innerHTML = generateStylesCSS();
+        D.head.appendChild(styleElement);
+    }
+
+    function generateStylesCSS() {
+        return `
+            .${CSS.TARGET_CIRCLE}, .${CSS.FILTER_CIRCLE} { pointer-events: none !important; }
+            
+            @keyframes pulseA {
+                0%, 100% { stroke-width: ${PULSE_STROKE.A.MIN}; fill-opacity: .1; r: ${PULSE_RADII.A.MIN}; }
+                50% { stroke-width: ${PULSE_STROKE.A.MAX}; fill-opacity: .25; r: ${PULSE_RADII.A.MAX}; }
+            }
+            @keyframes pulseW {
+                0%, 100% { stroke-width: ${PULSE_STROKE.W.MIN}; r: ${PULSE_RADII.W.MIN}; stroke-dasharray: 4 4; }
+                50% { stroke-width: ${PULSE_STROKE.W.MAX}; r: ${PULSE_RADII.W.MAX}; stroke-dasharray: 8 4; }
+            }
+            
+            .${CSS.TARGET_CIRCLE} { animation: pulseW ${ANIMATION.PULSE_DURATION} infinite linear !important; stroke: ${COLORS.PRIMARY}; fill: none; }
+            .${CSS.FILTER_CIRCLE} { animation: pulseA ${ANIMATION.PULSE_A_DURATION} infinite ease-in-out !important; }
+            
+            .${CSS.DRAGGABLE} { cursor: move; user-select: none; }
+            
+            .${CSS.PANEL} { 
+                position: fixed; top: ${PANEL_DIMS.TOP_OFFSET}px; left: ${PANEL_DIMS.LEFT_OFFSET}px; width: ${PANEL_DIMS.WIDTH}px; background: ${COLORS.LIGHT_BG}; 
+                color: ${COLORS.DARK_TEXT}; padding: 12px; border-radius: 8px; z-index: ${ZINDEX.MODAL_RESIZE}; 
+                font-family: sans-serif; border: 2px solid ${COLORS.PRIMARY}; box-sizing: border-box; 
+                transition: height .2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            }
+            
+            .${CSS.PANEL}.min { height: ${PANEL_DIMS.MIN_HEIGHT}px !important; width: ${PANEL_DIMS.MIN_WIDTH}px !important; overflow: hidden !important; border-color: ${COLORS.SECONDARY} !important; }
+            .${CSS.PANEL}.min > div:not(.${CSS.DRAGGABLE}) { display: none !important; }
+            
+            .r-pn input { 
+                width: 100%; padding: ${SIZES.PADDING_MD}; background: ${COLORS.LIGHT_BG}; color: ${COLORS.PRIMARY}; 
+                border: 1px solid ${COLORS.GRAY_TEXT}; border-radius: ${SIZES.BORDER_RADIUS}; font-size: 12px; 
+                outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 6px; 
+            }
+            .r-pn button { padding: 6px; color: ${COLORS.LIGHT_BG}; background: ${COLORS.PRIMARY}; border-radius: ${SIZES.BORDER_RADIUS}; font-size: 12px; cursor: pointer; box-sizing: border-box; border: none; }
+            
+            .r-db { 
+                position: fixed; top: 0; right: 0; left: auto; width: ${DASHBOARD_DIMS.WIDTH_PERCENT}vw; height: 100vh; 
+                background: ${COLORS.LIGHT_BG}; z-index: ${ZINDEX.DASHBOARD}; color: ${COLORS.DARK_TEXT}; font-family: sans-serif; 
+                padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; 
+                opacity: 0; pointer-events: none; transform: translateX(100%); 
+                transition: transform ${ANIMATION.TRANSITION_SPEED} ease, opacity ${ANIMATION.TRANSITION_SPEED} ease; border-left: 3px solid ${COLORS.PRIMARY}; 
+                box-shadow: -5px 0 15px rgba(0,0,0,0.1); 
+            }
+            
+            .r-gr { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; flex: 1; overflow-y: auto; padding: 15px 0; align-content: start; }
+            .r-cd { background: ${COLORS.LIGHT_GRAY}; border: 1px solid ${COLORS.BORDER}; border-top: 4px solid var(--c); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+            
+            .r-it { 
+                color: ${COLORS.DARK_TEXT} !important; font-size: ${SIZES.FONT_SM} !important; background: ${COLORS.LIGHT_BG} !important; 
+                padding: ${SIZES.PADDING_SM} !important; border-radius: ${SIZES.BORDER_RADIUS} !important; text-overflow: ellipsis !important; 
+                white-space: nowrap !important; overflow: hidden !important; border-left: 2px solid var(--c) !important; 
+                margin: 3px 0 0 0 !important; display: block !important; position: relative !important; 
+                height: auto !important; min-height: 26px !important; line-height: 14px !important; 
+                box-sizing: border-box !important; flex-shrink: 0 !important; border: 1px solid ${COLORS.BORDER} !important; 
+            }
+            
+            #r-ck-g { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px 12px !important; width: 100% !important; box-sizing: border-box !important; }
+            .r-lbl { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; user-select: none !important; }
+            .r-ck { width: ${SIZES.CHECKBOX}px !important; height: ${SIZES.CHECKBOX}px !important; min-width: ${SIZES.CHECKBOX}px !important; margin: 0 !important; padding: 0 !important; display: inline-block !important; cursor: pointer !important; }
+        `;
+    }
+
+    // ============ CONSTRUCTION DE L'INTERFACE ============
+
+    function createPanelUI() {
+        const panel = D.createElement('div');
+        panel.className = CSS.PANEL + ' r-pn';
+        panel.innerHTML = generatePanelHTML();
+        D.body.appendChild(panel);
+        
+        attachFilterCheckboxes();
+    }
+
+    function generatePanelHTML() {
+        return `
+            <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px;">
+                <span>🎯 SNIPER MAP V35</span>
+                <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
+                    <span id="r-rst" style="color:${COLORS.SECONDARY}">↺ Reset</span>
+                    <span id="r-mn">─</span>
+                    <span id="r-c">✕</span>
+                </div>
+            </div>
+            <div style="margin-bottom:6px;">
+                <input type="text" id="r-s" placeholder="Rechercher un composant...">
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
+                    <span>Mode: <button id="r-m" style="background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; padding:2px 6px; font-weight:bold;">🎯 Ciblé</button></span>
+                    <span id="r-ct" style="color:${COLORS.PRIMARY}; font-weight:bold;">0 / 0</span>
+                </div>
+                <div style="display:flex; gap:4px; margin-bottom:8px;">
+                    <button id="r-p" style="background:${COLORS.BORDER}; color:${COLORS.DARK_TEXT}; flex:1;">◀ Préc</button>
+                    <button id="r-nx" style="background:${COLORS.PRIMARY}; font-weight:bold; flex:1;">Suiv ▶</button>
+                </div>
+            </div>
+            <div style="background:${COLORS.LIGHT_GRAY}; padding:${SIZES.PADDING_MD}; border-radius:${SIZES.BORDER_RADIUS}; border:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:${COLORS.GRAY_TEXT}; font-size:11px; font-weight:bold;">
+                    <span>⚡ FILTRES</span>
+                    <span style="color:${COLORS.PRIMARY};">Actifs : <span id="r-f-cnt">0</span></span>
+                </div>
+                <div id="r-ck-g"></div>
+            </div>
+            <div id="r-db-box" style="margin-top:6px; display:none;">
+                <button id="r-sh-db" style="width:100%; padding:${SIZES.PADDING_MD}; background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; border:none; font-weight:bold; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer;">📊 Dashboard</button>
+            </div>
+            <div id="r-pv" style="font-size:${SIZES.FONT_SM}; background:${COLORS.LIGHT_BG}; padding:${SIZES.PADDING_MD}; border-radius:${SIZES.BORDER_RADIUS}; border-left:3px solid ${COLORS.PRIMARY}; margin-top:6px; display:none; color:${COLORS.DARK_TEXT};">-</div>
+        `;
+    }
+
+    function attachFilterCheckboxes() {
+        const container = E('r-ck-g');
+        TECH_FILTERS.forEach(filter => {
+            const label = D.createElement('label');
+            label.className = 'r-lbl';
+            label.style.color = COLORS.DARK_TEXT;
+            label.innerHTML = `<input type="checkbox" class="r-ck" value="${filter.id}" style="accent-color:${filter.c} !important;"> ${filter.n}`;
+            container.appendChild(label);
+        });
+    }
+
+    function createDashboardUI() {
+        const dashboard = D.createElement('div');
+        dashboard.className = 'r-db';
+        dashboard.id = 'r-db-mdl';
+        dashboard.innerHTML = generateDashboardHTML();
+        D.body.appendChild(dashboard);
+    }
+
+    function generateDashboardHTML() {
+        return `
+            <div style="position:absolute; left:${DASHBOARD_DIMS.HANDLE_LEFT}px; top:0; width:${DASHBOARD_DIMS.HANDLE_WIDTH}px; height:100%; cursor:ew-resize; z-index:${ZINDEX.MODAL_RESIZE}; background:transparent;" id="r-db-hdl"></div>
+            <div style="display:flex; justify-content:space-between; border-bottom:2px solid ${COLORS.BORDER}; padding-bottom:10px">
+                <div><h2 style="margin:0; color:${COLORS.PRIMARY}; font-size:18px;">🎯 SNIPER DASHBOARD</h2></div>
+                <div style="display:flex; gap:12px; font-size:11px; align-items:center; color:${COLORS.GRAY_TEXT};">
+                    <button id="r-db-cls" style="background:${COLORS.PRIMARY}; color:white; border:none; padding:6px 12px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold">✕ Fermer</button>
+                </div>
+            </div>
+            ${generateDashboardLegend()}
+            <div id="r-db-grid" class="r-gr"></div>
+        `;
+    }
+
+    function generateDashboardLegend() {
+        return `
+            <div style="display:flex; gap:16px; font-size:10px; color:${COLORS.GRAY_TEXT}; padding:8px 0; border-bottom:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.SUCCESS};margin-right:5px;vertical-align:middle;"></span>Nouveau</span>
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Impacté</span>
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.NEUTRAL};margin-right:5px;vertical-align:middle;"></span>Sans changement</span>
+            </div>
+        `;
+    }
+
+    // ============ GESTION DES ÉVÉNEMENTS ============
+
+    function attachEventListeners() {
+        attachPanelDragListeners();
+        attachDashboardResizeListeners();
+        attachDashboardToggleListeners();
+        attachPanelControlListeners();
+        attachFilterCheckboxListeners();
+        attachSearchInputListener();
+        attachNavigationButtonListeners();
+        attachModeToggleListener();
+    }
+
+    function attachPanelDragListeners() {
+        const panelHeader = document.querySelector('.' + CSS.PANEL + ' .' + CSS.DRAGGABLE);
+        const panel = document.querySelector('.' + CSS.PANEL);
+        
+        panelHeader.onmousedown = (e) => {
+            if (shouldAllowDragStart(e.target.id)) {
+                STATE.isDragging = true;
+                STATE.dragStartX = e.clientX - panel.getBoundingClientRect().left;
+                STATE.dragStartY = e.clientY - panel.getBoundingClientRect().top;
+            }
+        };
+
+        D.onmousemove = (e) => {
+            if (isDraggingPanel()) {
+                panel.style.left = (e.clientX - STATE.dragStartX) + 'px';
+                panel.style.top = (e.clientY - STATE.dragStartY) + 'px';
+            }
+        };
+
+        D.onmouseup = () => { STATE.isDragging = false; };
+    }
+
+    function attachDashboardResizeListeners() {
+        const dashboard = E('r-db-mdl');
+        const resizeHandle = E('r-db-hdl');
+
+        resizeHandle.onmousedown = (e) => {
+            STATE.isResizing = true;
+            D.body.style.userSelect = "none";
+            e.preventDefault();
+        };
+
+        D.addEventListener('mousemove', (e) => {
+            if (isNotResizingDashboard()) return;
+            
+            let w = window.innerWidth - e.clientX;
+            let maxWidth = window.innerWidth * DASHBOARD_DIMS.MAX_WIDTH_PERCENT;
+            
+            if (isValidResizeWidth(w, DASHBOARD_DIMS.MIN_WIDTH, maxWidth)) {
+                dashboard.style.width = w + 'px';
+            }
+        });
+
+        D.addEventListener('mouseup', () => {
+            if (isNotResizingDashboard()) return;
+            
+            STATE.isResizing = false;
+            D.body.style.userSelect = "";
+        });
+    }
+
+    function attachDashboardToggleListeners() {
+        E('r-sh-db').onclick = openDashboard;
+        E('r-db-cls').onclick = closeDashboard;
+        D.addEventListener('keydown', (e) => {
+            if (isEscapeKey(e.key)) {
+                closeDashboard();
+            }
+        });
+    }
+
+    function attachPanelControlListeners() {
+        E('r-c').onclick = closeTool;
+        E('r-mn').onclick = togglePanelMinimize;
+        E('r-rst').onclick = resetTool;
+    }
+
+    function attachFilterCheckboxListeners() {
+        Q('.r-ck').forEach(checkbox => {
+            checkbox.onchange = runFilters;
+        });
+    }
+
+    function attachSearchInputListener() {
+        E('r-s').oninput = () => {
+            clearTimeout(STATE.searchTimeout);
+            STATE.searchTimeout = setTimeout(searchMapText, ANIMATION.SEARCH_DEBOUNCE_MS);
+        };
+        E('r-s').onfocus = function() { this.select(); };
+    }
+
+    function attachNavigationButtonListeners() {
+        E('r-p').onclick = () => updateNavigationUI(STATE.currentIndex - 1);
+        E('r-nx').onclick = () => updateNavigationUI(STATE.currentIndex + 1);
+    }
+
+    function attachModeToggleListener() {
+        E('r-m').onclick = function() {
+            STATE.mode = isTargetMode() ? "global" : "target";
+            this.textContent = isTargetMode() ? "🎯 Ciblé" : "🌐 Global";
+            
+            if (isTargetMode()) {
+                updateNavigationUI(STATE.currentIndex);
+            } else {
+                resetSVGViewBoxes();
+                updateNavigationUI(0);
+            }
+        };
+    }
+
+    // ============ CONTRÔLES D'INTERFACE ============
+
+    function openDashboard() {
+        const dashboard = E('r-db-mdl');
+        dashboard.style.opacity = "1";
+        dashboard.style.pointerEvents = "auto";
+        dashboard.style.transform = "translateX(0)";
+    }
+
+    function closeDashboard() {
+        const dashboard = E('r-db-mdl');
+        dashboard.style.opacity = "0";
+        dashboard.style.pointerEvents = "none";
+        dashboard.style.transform = "translateX(100%)";
+    }
+
+    function closeTool() {
+        Q('.' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE).forEach(e => e.remove());
+        D.removeEventListener('keydown', (e) => { if (isEscapeKey(e.key)) closeDashboard(); });
+        E('r-db-mdl').remove();
+        document.querySelector('.' + CSS.PANEL).remove();
+    }
+
+    function togglePanelMinimize() {
+        const panel = document.querySelector('.' + CSS.PANEL);
+        panel.classList.toggle('min');
+        this.textContent = isPanelMinimized() ? '🗖' : '─';
+    }
+
+    function resetTool() {
+        E('r-s').value = "";
+        Q('.r-ck').forEach(c => c.checked = false);
+        Q('.' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE).forEach(e => e.remove());
+        resetSVGViewBoxes();
+        STATE.targets = [];
+        STATE.currentIndex = 0;
+        E('r-ct').textContent = "0 / 0";
+        E('r-f-cnt').textContent = "0";
+        E('r-pv').textContent = "-";
+        E('r-pv').style.display = "none";
+        E('r-db-box').style.display = "none";
+        closeDashboard();
+        E('r-db-grid').innerHTML = "";
+    }
+
+    // ============ ANALYSE DE STATUT ============
 
     function buildStatusShapeStrokeCache() {
         let cache = [];
         Q('svg rect, svg path, svg polygon, svg circle, svg ellipse').forEach(sh => {
-            let f = sh.getAttribute('stroke') || '';
-            if (f == '') return;
+            if (hasStrokeAttribute(sh) === false) return;
+            
+            let stroke = sh.getAttribute('stroke');
+            if (isValidStroke(stroke) === false) return;
+            
             try {
-                let b = sh.getBBox();
-                if (b.width > 0 && b.height > 0) cache.push({ id: f, box: b, area: b.width * b.height });
-            } catch (e) { /* getBBox peut échouer sur certaines formes non affichées */ }
+                let bbox = sh.getBBox();
+                if (hasValidBBox(bbox) === false) return;
+                
+                cache.push({ id: stroke, box: bbox, area: bbox.width * bbox.height });
+            } catch (e) { /* getBBox peut échouer */ }
         });
         return cache;
-    }
-
-    // Trouve, parmi le cache, la plus petite forme dont la bbox contient le centre de `bbox`.
-    function findStatusEntry(cache, bbox) {
-        let cx = bbox.x + bbox.width / 2, cy = bbox.y + bbox.height / 2, best = null;
-        for (let i = 0; i < cache.length; i++) {
-            let item = cache[i], sb = item.box;
-            if (cx >= sb.x - 1 && cx <= sb.x + sb.width + 1 && cy >= sb.y - 1 && cy <= sb.y + sb.height + 1) {
-                if (!best || item.area < best.area) best = item;
-            }
-        }
-        return best; // { id, box, area } ou null
     }
 
     function findAllStatusEntries(cache, bbox) {
@@ -178,414 +685,323 @@
         const cy = bbox.y + bbox.height / 2;
 
         const entries = cache
-            .filter(item =>
-                cx >= item.box.x - 1 &&
-                cx <= item.box.x + item.box.width + 1 &&
-                cy >= item.box.y - 1 &&
-                cy <= item.box.y + item.box.height + 1
-            )
+            .filter(item => isPointInBBox(cx, cy, item.box))
             .sort((a, b) => a.area - b.area);
 
-        // suppression des doublons
+        return deduplicateEntries(entries);
+    }
+
+    function deduplicateEntries(entries) {
         const ids = [];
         const seen = new Set();
-
         for (const e of entries) {
-            if (!seen.has(e.id)) {
+            if (seen.has(e.id) === false) {
                 seen.add(e.id);
                 ids.push(e.id);
             }
         }
-
         return ids;
     }
 
     function determineStatus(ids) {
-        const key = ids.join(",");
-        if (key.includes("#009300")){
+        if (isNewStatus(ids)) {
             return {
-                c:"#22c55e",
-                s:"N",
-                label:"Nouveau"
+                c: STATUS_LINEAR.NEW.color,
+                s: STATUS_LINEAR.NEW.code,
+                label: STATUS_LINEAR.NEW.label
             };
         }
-        if (key.includes("#a52a00")){
+        
+        if (isImpactedStatus(ids)) {
             return {
-                c:"#f59e0b",
-                s:"I",
-                label:"Impacté"
+                c: COLORS.WARNING,
+                s: 'I',
+                label: 'Impacté'
             };
         }
-        return  {
-            c:"#8d8282",
-            s:"-",
-            label:"Pas de changement"
-        };;
+        
+        return {
+            c: COLORS.NEUTRAL,
+            s: "-",
+            label: "Pas de changement"
+        };
     }
 
-    // 6. Construction HTML de l'Interface Utilisateur (Panneau principal)
-    const p = D.createElement('div');
-    p.className = P + ' r-pn';
-    p.innerHTML = `
-        <div class="r-drg" style="font-weight:bold; color:#0C419A; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid #E7ECF5; padding-bottom:4px;">
-            <span>🎯 SNIPER MAP V35</span>
-            <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
-                <span id="r-rst" style="color:#006386">↺ Reset</span>
-                <span id="r-dbg" title="Mode diagnostic : affiche les IDs Linear bruts">🐞</span>
-                <span id="r-mn">─</span>
-                <span id="r-c">✕</span>
-            </div>
-        </div>
-        <div style="margin-bottom:6px;">
-            <input type="text" id="r-s" placeholder="Rechercher un composant...">
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
-                <span>Mode: <button id="r-m" style="background:#E7ECF5; color:#0C419A; padding:2px 6px; font-weight:bold;">🎯 Ciblé</button></span>
-                <span id="r-ct" style="color:#0C419A; font-weight:bold;">0 / 0</span>
-            </div>
-            <div style="display:flex; gap:4px; margin-bottom:8px;">
-                <button id="r-p" style="background:#E7ECF5; color:#222324; flex:1;">◀ Préc</button>
-                <button id="r-nx" style="background:#0C419A; font-weight:bold; flex:1;">Suiv ▶</button>
-            </div>
-        </div>
-        <div style="background:#F8F9FA; padding:8px; border-radius:4px; border:1px solid #E7ECF5; margin-bottom:6px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:#545859; font-size:11px; font-weight:bold;">
-                <span>⚡ FILTRES</span>
-                <span style="color:#0C419A;">Actifs : <span id="r-f-cnt">0</span></span>
-            </div>
-            <div id="r-ck-g"></div>
-        </div>
-        <div id="r-db-box" style="margin-top:6px; display:none;">
-            <button id="r-sh-db" style="width:100%; padding:8px; background:#E7ECF5; color:#0C419A; border:none; font-weight:bold; border-radius:4px; cursor:pointer;">📊 VOIR LE DASHBOARD</button>
-        </div>
-        <div id="r-pv" style="font-size:11px; background:#FFFFFF; padding:8px; border-radius:4px; border-left:3px solid #0C419A; max-height:65px; overflow-y:auto; font-family:monospace; color:#222324; display:none; margin-top:6px; border:1px solid #E7ECF5;">-</div>
-    `;
-    D.body.appendChild(p);
+    // ============ UTILITAIRES SVG ============
 
-    // Injection des options de filtres
-    const ckg = p.querySelector('#r-ck-g');
-    T.forEach(t => {
-        const l = D.createElement('label');
-        l.className = 'r-lbl';
-        l.style.color = '#222324';
-        l.innerHTML = `<input type="checkbox" class="r-ck" value="${t.id}" style="accent-color:${t.c} !important;"> ${t.n}`;
-        ckg.appendChild(l);
-    });
-
-    // 7. Construction HTML du Dashboard Latéral Réglable
-    const db = D.createElement('div');
-    db.className = 'r-db';
-    db.id = 'r-db-mdl';
-    db.innerHTML = `
-        <div style="position:absolute; left:-4px; top:0; width:8px; height:100%; cursor:ew-resize; z-index:2147483647; background:transparent;" id="r-db-hdl"></div>
-        <div style="display:flex; justify-content:space-between; border-bottom:2px solid #E7ECF5; padding-bottom:10px">
-            <div><h2 style="margin:0; color:#0C419A; font-size:18px;">🎯 SNIPER DASHBOARD</h2></div>
-            <div style="display:flex; gap:12px; font-size:11px; align-items:center; color:#545859;">
-                <button id="r-db-cls" style="background:#0C419A; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold">✕ Fermer</button>
-            </div>
-        </div>
-        <div style="display:flex; gap:16px; font-size:10px; color:#545859; padding:8px 0; border-bottom:1px solid #E7ECF5; margin-bottom:6px;">
-            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:middle;"></span>Nouveau</span>
-            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;margin-right:5px;vertical-align:middle;"></span>Modifié ou Supprimé</span>
-            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#8d8282;margin-right:5px;vertical-align:middle;"></span>Pas de changement</span>
-        </div>
-        <div id="r-db-grid" class="r-gr"></div>
-    `;
-    D.body.appendChild(db);
-
-    // ---- GESTION DES ÉVÉNEMENTS & SOURIS (DRAG & DROP / RESIZE) ----
-    let isDragging = false, oX, oY;
-    p.querySelector('.r-drg').onmousedown = (e) => {
-        if (['r-mn', 'r-rst', 'r-c', 'r-dbg'].includes(e.target.id)) return;
-        isDragging = true;
-        oX = e.clientX - p.getBoundingClientRect().left;
-        oY = e.clientY - p.getBoundingClientRect().top;
-    };
-    D.onmousemove = (e) => {
-        if (isDragging) {
-            p.style.left = (e.clientX - oX) + 'px';
-            p.style.top = (e.clientY - oY) + 'px';
-        }
-    };
-    D.onmouseup = () => isDragging = false;
-
-    let isResizing = false;
-    E('r-db-hdl').onmousedown = (e) => {
-        isResizing = true;
-        D.body.style.userSelect = "none";
-        e.preventDefault();
-    };
-    D.addEventListener('mousemove', (e) => {
-        if (isResizing) {
-            let w = window.innerWidth - e.clientX;
-            if (w > 280 && w < window.innerWidth * 0.95) db.style.width = w + 'px';
-        }
-    });
-    D.addEventListener('mouseup', () => { 
-        if (isResizing) { 
-            isResizing = false; 
-            D.body.style.userSelect = ""; 
-        } 
-    });
-
-    // Fonctions d'Ouverture/Fermeture du Dashboard
-    const openDB = () => { db.style.opacity = "1"; db.style.pointerEvents = "auto"; db.style.transform = "translateX(0)"; };
-    const closeDB = () => { db.style.opacity = "0"; db.style.pointerEvents = "none"; db.style.transform = "translateX(100%)"; };
-    E('r-sh-db').onclick = openDB;
-    E('r-db-cls').onclick = closeDB;
-
-    const escHandler = (e) => { if (e.key === 'Escape') closeDB(); };
-    D.addEventListener('keydown', escHandler);
-
-    // Fermeture totale de l'outil (Bouton X)
-    E('r-c').onclick = () => {
-        Q('.' + W + ', .' + A).forEach(e => e.remove());
-        D.removeEventListener('keydown', escHandler);
-        db.remove();
-        p.remove();
-    };
-
-    // Minimisation du panneau de contrôle
-    E('r-mn').onclick = function() {
-        p.classList.toggle('min');
-        this.textContent = p.classList.contains('min') ? '🗖' : '─';
-    };
-
-    // Bascule du mode diagnostic (affiche les IDs Linear bruts au lieu du statut deviné)
-    E('r-dbg').onclick = function() {
-        debugMode = !debugMode;
-        this.style.opacity = debugMode ? '1' : '0.35';
-        runFilters();
-    };
-    E('r-dbg').style.opacity = '0.35';
-
-    // ---- FONCTIONS CŒUR DE NAVIGATION ET FILTRAGE ----
     function resetSVGViewBoxes() {
-        Q('svg').forEach(v => { 
-            let o = v.getAttribute('data-ro'); 
-            if (o) v.setAttribute('viewBox', o); 
+        Q('svg').forEach(v => {
+            let original = v.getAttribute('data-ro');
+            if (original) v.setAttribute('viewBox', original);
         });
     }
 
-    function createSVGCircle(cls, x, y, col) {
-        let c = D.createElementNS(NS, "circle");
-        c.setAttribute("class", cls); 
-        c.setAttribute("cx", x); 
-        c.setAttribute("cy", y);
-        if (col) c.style.cssText = `stroke:${col}; fill:${col};`;
-        return c;
+    function createSVGCircle(className, cx, cy, color) {
+        let circle = D.createElementNS(NS, "circle");
+        circle.setAttribute("class", className);
+        circle.setAttribute("cx", cx);
+        circle.setAttribute("cy", cy);
+        if (color) {
+            circle.style.cssText = `stroke:${color}; fill:${color};`;
+        }
+        return circle;
     }
 
-    // Mise à jour de la cible visuelle et du focus caméra
-    function updateNavigationUI(idx, skipZoom) {
-        let currentStatusSpan = E('r-ct'), previewDiv = E('r-pv');
-        Q('.' + W).forEach(e => e.remove());
+    function getComponentCenter(element) {
+        if (hasInvalidGroup(element)) return null;
         
-        if (targets.length === 0) { 
-            currentStatusSpan.textContent = "0 / 0"; 
-            previewDiv.textContent = "-"; 
-            previewDiv.style.display = "none"; 
-            return; 
-        }
+        const group = element.closest('g');
+        const bbox = group.getBBox();
+        return {
+            x: bbox.x + bbox.width / 2,
+            y: bbox.y + bbox.height / 2,
+            bbox: bbox,
+            text: group.textContent.replace(/\s+/g, ' ').trim()
+        };
+    }
+
+    // ============ NAVIGATION ============
+
+    function updateNavigationUI(idx, skipZoom = false) {
+        const statusSpan = E('r-ct');
+        const previewDiv = E('r-pv');
         
-        previewDiv.style.display = "block";
-        
-        // Mode de vue Global (Toutes les occurrences illuminées en même temps)
-        if (mode === "global") {
-            let globalCoords = [];
-            targets.forEach(el => {
-                let g = el.closest('g');
-                if (g) {
-                    let b = g.getBBox(), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-                    if (globalCoords.some(pt => Math.hypot(pt.x - cx, pt.y - cy) < 45)) return;
-                    globalCoords.push({ x: cx, y: cy }); 
-                    g.appendChild(createSVGCircle(W, cx, cy));
-                }
-            });
+        removeAllTargetCircles();
+
+        if (hasNoTargets()) {
+            displayEmptyState(statusSpan, previewDiv);
             return;
         }
+
+        previewDiv.style.display = "block";
+
+        if (isGlobalMode()) {
+            displayGlobalMode();
+            return;
+        }
+
+        displayTargetMode(idx, statusSpan, previewDiv, skipZoom);
+    }
+
+    function removeAllTargetCircles() {
+        Q('.' + CSS.TARGET_CIRCLE).forEach(e => e.remove());
+    }
+
+    function displayEmptyState(statusSpan, previewDiv) {
+        statusSpan.textContent = "0 / 0";
+        previewDiv.textContent = "-";
+        previewDiv.style.display = "none";
+    }
+
+    function displayGlobalMode() {
+        let globalCoords = [];
+        STATE.targets.forEach(el => {
+            const center = getComponentCenter(el);
+            if (hasInvalidCenter(center)) return;
+
+            if (isDuplicateLocation(globalCoords, center.x, center.y)) return;
+
+            globalCoords.push({ x: center.x, y: center.y });
+            const group = el.closest('g');
+            group.appendChild(createSVGCircle(CSS.TARGET_CIRCLE, center.x, center.y));
+        });
+    }
+
+    function displayTargetMode(idx, statusSpan, previewDiv, skipZoom) {
+        if (idx < 0) idx = STATE.targets.length - 1;
+        if (idx >= STATE.targets.length) idx = 0;
+        STATE.currentIndex = idx;
+
+        const el = STATE.targets[STATE.currentIndex];
+        const center = getComponentCenter(el);
         
-        // Mode de vue Ciblé (Navigation étape par étape avec translation de caméra)
-        if (idx < 0) idx = targets.length - 1;
-        if (idx >= targets.length) idx = 0;
-        I = idx;
+        if (hasInvalidCenter(center)) return;
+
+        const group = el.closest('g');
+        const svg = el.closest('svg');
         
-        let el = targets[I], g = el.closest('g'), svg = el.closest('svg');
-        if (g && svg) {
-            let b = g.getBBox(), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-            g.appendChild(createSVGCircle(W, cx, cy));
-            previewDiv.textContent = g.textContent.replace(/\s+/g, ' ').trim();
-            currentStatusSpan.textContent = (I + 1) + ' / ' + targets.length;
-            
-            if (!skipZoom) { 
-                let w = 1400, h = 900; 
-                svg.setAttribute('viewBox', (cx - w / 2) + ' ' + (cy - h / 2) + ' ' + w + ' ' + h); 
-            }
+        group.appendChild(createSVGCircle(CSS.TARGET_CIRCLE, center.x, center.y));
+        previewDiv.textContent = center.text;
+        statusSpan.textContent = (STATE.currentIndex + 1) + ' / ' + STATE.targets.length;
+
+        if (shouldSkipZoom(skipZoom) === false && svg) {
+            zoomToTarget(svg, center.x, center.y);
         }
     }
 
-    function trierPrioriteStatut(liste) {
-        // 1. Définition de l'ordre des priorités (le plus petit chiffre est trié en premier)
-        const priorites = {
-            'N': 1,
-            'I': 2
-        };
-
-        // 2. Application du tri
-        return liste.sort((a, b) => {
-            // On récupère le code (avec une valeur par défaut au cas où st ou st.s est absent)
-            const statutA = a.st?.s;
-            const statutB = b.st?.s;
-
-            // Si le statut n'est ni N ni I, on lui attribue une priorité infinie (trié à la fin)
-            const poidsA = priorites[statutA] ?? Infinity;
-            const poidsB = priorites[statutB] ?? Infinity;
-
-            // Comparaison numérique des poids
-            return poidsA - poidsB;
-    });
+    function zoomToTarget(svg, cx, cy) {
+        const viewBox = `${cx - ZOOM.WIDTH / 2} ${cy - ZOOM.HEIGHT / 2} ${ZOOM.WIDTH} ${ZOOM.HEIGHT}`;
+        svg.setAttribute('viewBox', viewBox);
     }
 
-    // Gestionnaire de la saisie utilisateur (Recherche textuelle)
+    // ============ RECHERCHE ET FILTRAGE ============
+
     function searchMapText() {
-        targets = [];
-        let queryValue = E('r-s').value.trim().toLowerCase(), savedPoints = [];
-        if (!queryValue) { updateNavigationUI(0); return; }
+        STATE.targets = [];
+        const query = E('r-s').value.trim().toLowerCase();
         
-        Q('svg text, svg tspan').forEach(el => {
-            let g = el.closest('g'); 
-            if (!g) return;
-            if (/^\s*\d{5}\s*[-–]/.test(g.textContent.trim())) return; // Ignore les cartouches de légendes numériques
-            
-            if (g.textContent.toLowerCase().includes(queryValue)) {
-                let b = g.getBBox(), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-                if (savedPoints.some(pt => Math.hypot(pt.x - cx, pt.y - cy) < 45)) return; // Anti-doublon par proximité géométrique
-                savedPoints.push({ x: cx, y: cy }); 
-                targets.push(el);
-            }
-        });
+        if (query) {
+            performSearch(query);
+        }
+        
         updateNavigationUI(0);
     }
 
-    E('r-s').oninput = () => { clearTimeout(tOut); tOut = setTimeout(searchMapText, 150); };
-    E('r-s').onfocus = function() { this.select(); };
-    E('r-p').onclick = () => updateNavigationUI(I - 1);
-    E('r-nx').onclick = () => updateNavigationUI(I + 1);
-    
-    E('r-m').onclick = function() {
-        mode = mode === "target" ? "global" : "target";
-        this.textContent = mode === "target" ? "🎯 Ciblé" : "🌐 Global";
-        if (mode === "target") updateNavigationUI(I); else { resetSVGViewBoxes(); updateNavigationUI(0); }
-    };
-
-    // Bouton de réinitialisation complète (Reset)
-    E('r-rst').onclick = () => {
-        E('r-s').value = ""; 
-        Q('.r-ck').forEach(c => c.checked = false); 
-        Q('.' + W + ', .' + A).forEach(e => e.remove());
-        resetSVGViewBoxes(); 
-        targets = []; 
-        I = 0; 
-        E('r-ct').textContent = "0 / 0"; 
-        E('r-f-cnt').textContent = "0";
-        E('r-pv').textContent = "-"; 
-        E('r-pv').style.display = "none"; 
-        E('r-db-box').style.display = "none";
-        closeDB(); 
-        E('r-db-grid').innerHTML = "";
-    };
-
-    // Moteur d'analyse des filtres technologiques + Injection dans le Dashboard
-    function runFilters() {
-        Q('.' + A).forEach(e => e.remove());
-        let activeFilters = Array.from(Q('.r-ck')).filter(c => c.checked).map(c => T.find(t => t.id === c.value)).filter(Boolean);
+    function performSearch(query) {
+        const savedPoints = [];
         
-        if (activeFilters.length === 0) { 
-            E('r-f-cnt').textContent = "0"; 
-            E('r-db-box').style.display = "none"; 
-            closeDB(); 
-            return; 
-        }
-        
-        let count = 0, filterCoords = [], gridData = {};
-        activeFilters.forEach(a => gridData[a.id] = []);
-        //const statusCache = buildStatusShapeCache(); // une seule construction pour tout le scan
-        const statusCache = buildStatusShapeStrokeCache();
         Q('svg text, svg tspan').forEach(el => {
-            let g = el.closest('g'); 
-            if (!g) return;
-            if (/^\s*\d{5}\s*[-–]/.test(g.textContent.trim())) return;
-            
-            let txt = g.textContent.toLowerCase();
-            let match = activeFilters.find(act => act.k.some(kwd => txt.includes(kwd)));
-            
-            if (match) {
-                let b = g.getBBox(), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-                if (filterCoords.some(pt => Math.hypot(pt.x - cx, pt.y - cy) < 45)) return;
-                filterCoords.push({ x: cx, y: cy }); 
-                count++; 
-                
-                g.appendChild(createSVGCircle(A, cx, cy, match.c));
-                
-                let cleanedText = g.textContent.replace(/\s+/g, ' ').trim();
-                const ids = findAllStatusEntries(statusCache, b);
+            const group = el.closest('g');
+            if (componentHasNoGroup(el)) return;
+            if (isLegendItem(group.textContent)) return;
 
-                const statusInfo = determineStatus(ids);
-                if (!gridData[match.id].find(i => i.t === cleanedText)) {
-                    gridData[match.id].push({ t: cleanedText, st: statusInfo, raw: ids });
-                }
+            if (matchesSearchQuery(group.textContent, query)) {
+                const center = getComponentCenter(el);
+                if (hasInvalidCenter(center)) return;
+
+                if (isDuplicateLocation(savedPoints, center.x, center.y)) return;
+
+                savedPoints.push({ x: center.x, y: center.y });
+                STATE.targets.push(el);
             }
         });
-        
-        E('r-f-cnt').textContent = count;
-        
-        // Génération HTML des listes de composants par types dans le Dashboard latéral
-        if (count > 0) {
-            E('r-db-box').style.display = "block"; 
-            let htmlGrid = "";
-            activeFilters.forEach(a => {
-                let items = trierPrioriteStatut(gridData[a.id]);
-                
-                if (items.length > 0) {
-                    htmlGrid += `
-                        <div class="r-cd" style="border-top:4px solid ${a.c}">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #E7ECF5; padding-bottom:4px;">
-                                <span style="color:${a.c}; font-weight:bold; font-size:12px;">■ ${a.n}</span>
-                                <span style="background:${a.c}; color:white; font-weight:bold; font-size:10px; padding:1px 5px; border-radius:10px;">${items.length}</span>
-                            </div>
-                            <div style="display:flex; flex-direction:column; overflow-y:auto; max-height:400px !important; gap:2px !important;">
-                                ${items.map(i => {
-                                    if (debugMode) {
-                                        let rawTxt = i.raw.length ? i.raw.join(',') : '∅';
-                                        let badge = `<span style="display:inline-block; background:#545859; color:#fff; font-size:9px; font-family:monospace; padding:1px 5px; border-radius:4px; margin-right:6px; flex-shrink:0;">#${rawTxt}</span>`;
-                                        return `<div class="r-it" style="border-left:3px solid ${a.c} !important;" title="Linear brut(s): ${rawTxt}">${badge}${i.t}</div>`;
-                                    }
-                                    let dot = i.st ? `<span style="display:inline-block; width:9px; height:9px; min-width:9px; border-radius:50%; background:${i.st.c}; margin-right:6px; vertical-align:middle;"></span>` : '';
-                                    let tip = (i.st ? i.st.label + ' — ' : '') + i.t;
-                                    return `<div class="r-it" style="border-left:3px solid ${a.c} !important;" title="${tip}">${dot}${i.t}</div>`;
-                                }).join('')}
-                            </div>
-                        </div>`;
-                }
-            });
-            E('r-db-grid').innerHTML = htmlGrid;
-            
-            if (debugMode) {
-                let debugTable = [];
-                activeFilters.forEach(a => gridData[a.id].forEach(i => debugTable.push({
-                    Composant: i.t,
-                    Categorie: a.n,
-                    'Linear bruts': i.raw.join(',') || '∅',
-                    'Statut devine': i.st ? i.st.label : '-'
-                })));
-                console.log('%c🎯 SNIPER MAP - Diagnostic Linear IDs (copie ce tableau et envoie-le)', 'color:#0C419A;font-weight:bold;');
-                console.table(debugTable);
-            }
-        } else { 
-            E('r-db-box').style.display = "none"; 
-            closeDB(); 
-        }
     }
 
-    Q('.r-ck').forEach(ck => ck.onchange = runFilters);
-    searchMapText(); // Premier scan à blanc au démarrage
+    function sortByStatusPriority(items) {
+        const priorities = { 'N': 1, 'I': 2 };
+
+        return items.sort((a, b) => {
+            const statusA = a.st?.s;
+            const statusB = b.st?.s;
+            const weightA = priorities[statusA] ?? Infinity;
+            const weightB = priorities[statusB] ?? Infinity;
+            return weightA - weightB;
+        });
+    }
+
+    function runFilters() {
+        Q('.' + CSS.FILTER_CIRCLE).forEach(e => e.remove());
+
+        const activeFilters = getActiveFilters();
+
+        if (hasFiltersActive(activeFilters) === false) {
+            handleNoActiveFilters();
+            return;
+        }
+
+        const gridData = processFilteredComponents(activeFilters);
+        const totalCount = Object.values(gridData).reduce((sum, arr) => sum + arr.length, 0);
+
+        updateFilterUI(totalCount, activeFilters, gridData);
+    }
+
+    function getActiveFilters() {
+        return Array.from(Q('.r-ck'))
+            .filter(isFilterActive)
+            .map(c => TECH_FILTERS.find(t => t.id === c.value))
+            .filter(isValidFilter);
+    }
+
+    function handleNoActiveFilters() {
+        E('r-f-cnt').textContent = "0";
+        E('r-db-box').style.display = "none";
+        closeDashboard();
+    }
+
+    function processFilteredComponents(activeFilters) {
+        const gridData = {};
+        const filterCoords = [];
+        const statusCache = buildStatusShapeStrokeCache();
+
+        activeFilters.forEach(a => gridData[a.id] = []);
+
+        Q('svg text, svg tspan').forEach(el => {
+            const group = el.closest('g');
+            if (componentHasNoGroup(el)) return;
+            if (isLegendItem(group.textContent)) return;
+
+            const match = findMatchingFilter(group, activeFilters);
+            if (match === undefined) return;
+
+            const center = getComponentCenter(el);
+            if (hasInvalidCenter(center)) return;
+
+            if (isDuplicateLocation(filterCoords, center.x, center.y)) return;
+
+            filterCoords.push({ x: center.x, y: center.y });
+            group.appendChild(createSVGCircle(CSS.FILTER_CIRCLE, center.x, center.y, match.c));
+
+            const ids = findAllStatusEntries(statusCache, center.bbox);
+            const statusInfo = determineStatus(ids);
+
+            if (gridData[match.id].find(i => i.t === center.text) === undefined) {
+                gridData[match.id].push({ t: center.text, st: statusInfo, raw: ids });
+            }
+        });
+
+        return gridData;
+    }
+
+    function findMatchingFilter(group, activeFilters) {
+        const txt = group.textContent.toLowerCase();
+        return activeFilters.find(act => filterMatchesComponent(act, txt));
+    }
+
+    function updateFilterUI(totalCount, activeFilters, gridData) {
+        E('r-f-cnt').textContent = totalCount;
+
+        if (totalCount === 0) {
+            E('r-db-box').style.display = "none";
+            closeDashboard();
+            return;
+        }
+
+        E('r-db-box').style.display = "block";
+        const htmlGrid = generateDashboardGrid(activeFilters, gridData);
+        E('r-db-grid').innerHTML = htmlGrid;
+    }
+
+    function generateDashboardGrid(activeFilters, gridData) {
+        let html = "";
+
+        activeFilters.forEach(filter => {
+            const items = sortByStatusPriority(gridData[filter.id]);
+
+            if (items.length > 0) {
+                html += generateFilterCard(filter, items);
+            }
+        });
+
+        return html;
+    }
+
+    function generateFilterCard(filter, items) {
+        return `
+            <div class="r-cd" style="border-top:4px solid ${filter.c}">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:4px;">
+                    <span style="color:${filter.c}; font-weight:bold; font-size:12px;">■ ${filter.n}</span>
+                    <span style="background:${filter.c}; color:white; font-weight:bold; font-size:10px; padding:${SIZES.BADGE_PADDING}; border-radius:10px;">${items.length}</span>
+                </div>
+                <div style="display:flex; flex-direction:column; overflow-y:auto; max-height:400px !important; gap:2px !important;">
+                    ${generateItemsList(items, filter.c)}
+                </div>
+            </div>`;
+    }
+
+    function generateItemsList(items, filterColor) {
+        return items.map(item => generateNormalItem(item, filterColor)).join('');
+    }
+
+    function generateNormalItem(item, filterColor) {
+        const dot = hasStatus(item) ? `<span style="display:inline-block; width:${SIZES.DOT}px; height:${SIZES.DOT}px; min-width:${SIZES.DOT}px; border-radius:50%; background:${item.st.c}; margin-right:6px;"></span>` : '';
+        const title = (hasStatus(item) ? item.st.label + ' — ' : '') + item.t;
+        return `<div class="r-it" style="border-left:3px solid ${filterColor} !important;" title="${title}">${dot}${item.t}</div>`;
+    }
+
+    function performInitialSearch() {
+        searchMapText();
+    }
+
+    // ============ LANCEMENT DE L'APPLICATION ============
+    initializeApp();
 })();
