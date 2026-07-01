@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installateur Sniper Map v30</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 30px;
+            background-color: #f3f4f6;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        h2 {
+            color: #0078d4;
+            margin-top: 0;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 10px;
+        }
+        .instructions {
+            background-color: #f0f7ff;
+            border-left: 4px solid #0078d4;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        #drag-btn {
+            display: inline-block;
+            padding: 14px 28px;
+            background: #0078d4;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: move;
+            transition: background 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #drag-btn:hover {
+            background: #005a9e;
+        }
+        .status {
+            font-weight: bold;
+            color: #666;
+        }
+        .error {
+            color: #a80000;
+            background: #fde7e9;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #a80000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎯 Installateur Sniper Map v30</h2>
+    <p>Cette page récupère automatiquement le code source non minifié depuis GitHub pour générer votre bookmarklet sans restriction de taille.</p>
+    
+    <div id="action-area">
+        <p class="status">🔄 Récupération du script depuis GitHub...</p>
+    </div>
+</div>
+
+<script>
+    const githubRawUrl = 'https://raw.githubusercontent.com/Sims07/hopex-search-component/refs/heads/main/sniper-map-v30.js';
+
+    fetch(githubRawUrl)
+        .then(response => {
+            if (!response.ok) throw new Error(`Erreur HTTP : ${response.status}`);
+            return response.text();
+        })
+        .then(jsCode => {
+            // 1. SUPPRESSION DES COMMENTAIRES '//' LIGNE PAR LIGNE
+            // On sépare le texte par ligne, et on retire tout ce qui se trouve après un '//' (sauf s'il fait partie d'une URL http://)
+            const lines = jsCode.split(/\r?\n/);
+            const cleanedLines = lines.map(line => {
+                // Cette regex cible les '//' qui ne sont pas précédés par ':' (ex: http:// ou https://)
+                return line.replace(/(?<!:)\/\/.*$/, '');
+            });
+            
+            // 2. Reconstruction du code sur une seule ligne avec des espaces
+            const finalJs = cleanedLines.join(' ');
+            
+            // 3. Encapsulation dans l'URL du favori
+            const bookmarkletURL = "javascript:(function(){" + finalJs + "})();";
+            
+            // 4. Affichage du bouton
+            const area = document.getElementById('action-area');
+            area.innerHTML = `
+                <div class="instructions">
+                    <strong>Mise à jour réussie :</strong> Glissez le bouton ci-dessous dans vos favoris Edge. Les commentaires ont été purgés pour éviter le blocage du script.
+                </div>
+                <div style="text-align: center; margin-top: 25px;" id="btn-container"></div>
+            `;
+            
+            const btn = document.createElement('a');
+            btn.id = "drag-btn";
+            btn.href = bookmarkletURL;
+            btn.innerText = "🎯 Sniper Map v30";
+            
+            document.getElementById('btn-container').appendChild(btn);
+        })
+        .catch(err => {
+            document.getElementById('action-area').innerHTML = `<p style="color:red;">Erreur : ${err.message}</p>`;
+        });
+</script>
+
+</body>
+</html>
