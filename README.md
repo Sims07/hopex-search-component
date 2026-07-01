@@ -112,7 +112,7 @@ hopex-search-component/
 
 | Version | Date       | Description                                                                                     |
 |---------|------------|-------------------------------------------------------------------------------------------------|
-| V30     | 2026-07-01 | Intégration de `install.html`. Résolution définitive du bug `Unexpected end of input` lié à l'IHM des navigateurs et aux commentaires monolignes. |
+| V0.0.35    | 2026-07-01 | Intégration de `install.html`. Résolution définitive du bug `Unexpected end of input` lié à l'IHM des navigateurs et aux commentaires monolignes. |
 
 ---
 
