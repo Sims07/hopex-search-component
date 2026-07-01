@@ -554,7 +554,6 @@
                             </div>
                             <div style="display:flex; flex-direction:column; overflow-y:auto; max-height:400px !important; gap:2px !important;">
                                 ${items.map(i => {
-                                    console.info(i)
                                     if (debugMode) {
                                         let rawTxt = i.raw.length ? i.raw.join(',') : '∅';
                                         let badge = `<span style="display:inline-block; background:#545859; color:#fff; font-size:9px; font-family:monospace; padding:1px 5px; border-radius:4px; margin-right:6px; flex-shrink:0;">#${rawTxt}</span>`;
