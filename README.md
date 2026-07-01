@@ -17,18 +17,19 @@
 
 ## 🚀 Installation
 
-### Méthode 1 : Glisser-déposer (recommandé)
+### Méthode 1 : Installation automatique par Glisser-déposer (Recommandé)
+Pour contourner les limitations de taille et de formatage de l'IHM de Edge/Chrome, utilisez notre page d'installation :
+
+1. Ouvrez la page **[install.html](install.html)** (ou son équivalent via GitHub Pages si configuré).
+2. Glissez et déposez (Drag & Drop) le bouton bleu **🎯 Sniper Map v30** directement dans votre **barre de favoris** du navigateur.
+3. Allez sur votre instance **Mega Hopex**, puis cliquez sur le favori pour activer l'outil.
+
+> 🔄 **Mise à jour transparente** : La page d'installation nettoie automatiquement les commentaires du script brut. Inutile de recréer le favori lors des prochaines mises à jour du code source sur GitHub !
+
+### Méthode 2 : Exécution temporaire via la Console
 1. Ouvrez **Mega Hopex** dans votre navigateur.
-2. Ouvrez la console du navigateur (**F12** ou **Ctrl+Shift+I**).
-3. Copiez le contenu du fichier **[sniper-map-v30.js](sniper-map-v30.js)** et collez-le dans la console, puis exécutez-le.
-
-   > ⚠️ **Note** : Cette méthode installe directement Sniper Map sans bouton intermédiaire.
-
-### Méthode 2 : Installation manuelle du bookmarklet
-1. Créez un nouveau **favori** dans votre navigateur.
-2. Comme **URL**, copiez-collez le contenu du fichier [`sniper-map-v30.js`](sniper-map-v30.js).
-3. Enregistrez le favori.
-4. Dans **Mega Hopex**, cliquez sur le favori pour activer **Sniper Map**. Un panneau flottant apparaîtra.
+2. Ouvrez la console de développement (**F12** ou **Ctrl+Shift+I**).
+3. Copiez l'intégralité du contenu du fichier **[sniper-map-v30.js](sniper-map-v30.js)**, collez-le dans la console, puis appuyez sur **Entrée**.
 
 ---
 
@@ -94,7 +95,8 @@ Les résultats filtrés apparaissent dans le **dashboard latéral** avec :
 ```
 hopex-search-component/
 ├── README.md               # Documentation
-└── sniper-map-v30.js       # Code source du bookmarklet (V30)
+├── install.html            # Page d'installation automatique (Drag & Drop)
+└── sniper-map-v30.js       # Code source non minifié du bookmarklet (V30)
 ```
 
 ### Contribuer
@@ -110,7 +112,7 @@ hopex-search-component/
 
 | Version | Date       | Description                                                                                     |
 |---------|------------|-------------------------------------------------------------------------------------------------|
-| V30     | 2024-XX-XX | Version stable. Résolution du bug critique "Unexpected end of input" via `.toString()`.       |
+| V30     | 2026-07-01 | Intégration de `install.html`. Résolution définitive du bug `Unexpected end of input` lié à l'IHM des navigateurs et aux commentaires monolignes. |
 
 ---
 
@@ -123,4 +125,4 @@ hopex-search-component/
 
 ## 📄 Licence
 
-Ce projet est sous licence **MIT**. Consultez le fichier [LICENSE](LICENSE) pour plus de détails.
+Ce projet est sous licence **MIT**. Consultez le fichier [LICENSE](LICENSE) pour plus de
