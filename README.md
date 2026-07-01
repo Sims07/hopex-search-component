@@ -29,7 +29,7 @@ Pour contourner les limitations de taille et de formatage de l'IHM de Edge/Chrom
 ### Méthode 2 : Exécution temporaire via la Console
 1. Ouvrez **Mega Hopex** dans votre navigateur.
 2. Ouvrez la console de développement (**F12** ou **Ctrl+Shift+I**).
-3. Copiez l'intégralité du contenu du fichier **[sniper-map-v30.js](sniper-map-v30.js)**, collez-le dans la console, puis appuyez sur **Entrée**.
+3. Copiez l'intégralité du contenu du fichier **[sniper-map.js](sniper-map.js)**, collez-le dans la console, puis appuyez sur **Entrée**.
 
 ---
 
