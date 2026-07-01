@@ -131,7 +131,6 @@
         currentIndex: 0,
         mode: "target",
         searchTimeout: null,
-        debugMode: false,
         isDragging: false,
         isResizing: false
     };
@@ -193,7 +192,7 @@
     }
 
     function isControlButton(elementId) {
-        return ['r-mn', 'r-rst', 'r-c', 'r-dbg'].includes(elementId);
+        return ['r-mn', 'r-rst', 'r-c'].includes(elementId);
     }
 
     function shouldAllowDragStart(elementId) {
@@ -253,10 +252,6 @@
     function isPanelMinimized() {
         const panel = document.querySelector('.' + CSS.PANEL);
         return panel && panel.classList.contains('min');
-    }
-
-    function isDebugModeEnabled() {
-        return STATE.debugMode;
     }
 
     function shouldSkipZoom(flag) {
@@ -401,7 +396,7 @@
             }
             
             .r-gr { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; flex: 1; overflow-y: auto; padding: 15px 0; align-content: start; }
-            .r-cd { background: ${COLORS.LIGHT_GRAY}; border: 1px solid ${COLORS.BORDER}; border-top: 4px solid var(--c); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; box-sizing: border-box; }
+            .r-cd { background: ${COLORS.LIGHT_GRAY}; border: 1px solid ${COLORS.BORDER}; border-top: 4px solid var(--c); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
             
             .r-it { 
                 color: ${COLORS.DARK_TEXT} !important; font-size: ${SIZES.FONT_SM} !important; background: ${COLORS.LIGHT_BG} !important; 
@@ -413,7 +408,7 @@
             }
             
             #r-ck-g { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px 12px !important; width: 100% !important; box-sizing: border-box !important; }
-            .r-lbl { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; }
+            .r-lbl { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; user-select: none !important; }
             .r-ck { width: ${SIZES.CHECKBOX}px !important; height: ${SIZES.CHECKBOX}px !important; min-width: ${SIZES.CHECKBOX}px !important; margin: 0 !important; padding: 0 !important; display: inline-block !important; cursor: pointer !important; }
         `;
     }
@@ -431,11 +426,10 @@
 
     function generatePanelHTML() {
         return `
-            <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:4px;">
+            <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px;">
                 <span>🎯 SNIPER MAP V35</span>
                 <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
                     <span id="r-rst" style="color:${COLORS.SECONDARY}">↺ Reset</span>
-                    <span id="r-dbg" title="Mode diagnostic : affiche les IDs Linear bruts">🐞</span>
                     <span id="r-mn">─</span>
                     <span id="r-c">✕</span>
                 </div>
@@ -459,9 +453,9 @@
                 <div id="r-ck-g"></div>
             </div>
             <div id="r-db-box" style="margin-top:6px; display:none;">
-                <button id="r-sh-db" style="width:100%; padding:${SIZES.PADDING_MD}; background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; border:none; font-weight:bold; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer;">📊 VOIR LE DASHBOARD</button>
+                <button id="r-sh-db" style="width:100%; padding:${SIZES.PADDING_MD}; background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; border:none; font-weight:bold; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer;">📊 Dashboard</button>
             </div>
-            <div id="r-pv" style="font-size:${SIZES.FONT_SM}; background:${COLORS.LIGHT_BG}; padding:${SIZES.PADDING_MD}; border-radius:${SIZES.BORDER_RADIUS}; border-left:3px solid ${COLORS.PRIMARY}; max-height:65px; overflow-y:auto; font-family:monospace; color:${COLORS.DARK_TEXT}; display:none;">-</div>
+            <div id="r-pv" style="font-size:${SIZES.FONT_SM}; background:${COLORS.LIGHT_BG}; padding:${SIZES.PADDING_MD}; border-radius:${SIZES.BORDER_RADIUS}; border-left:3px solid ${COLORS.PRIMARY}; margin-top:6px; display:none; color:${COLORS.DARK_TEXT};">-</div>
         `;
     }
 
@@ -502,8 +496,8 @@
         return `
             <div style="display:flex; gap:16px; font-size:10px; color:${COLORS.GRAY_TEXT}; padding:8px 0; border-bottom:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
                 <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.SUCCESS};margin-right:5px;vertical-align:middle;"></span>Nouveau</span>
-                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Modifié ou Supprimé</span>
-                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.NEUTRAL};margin-right:5px;vertical-align:middle;"></span>Pas de changement</span>
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Impacté</span>
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.NEUTRAL};margin-right:5px;vertical-align:middle;"></span>Sans changement</span>
             </div>
         `;
     }
@@ -585,7 +579,6 @@
     function attachPanelControlListeners() {
         E('r-c').onclick = closeTool;
         E('r-mn').onclick = togglePanelMinimize;
-        E('r-dbg').onclick = toggleDebugMode;
         E('r-rst').onclick = resetTool;
     }
 
@@ -649,12 +642,6 @@
         const panel = document.querySelector('.' + CSS.PANEL);
         panel.classList.toggle('min');
         this.textContent = isPanelMinimized() ? '🗖' : '─';
-    }
-
-    function toggleDebugMode() {
-        STATE.debugMode = STATE.debugMode === false;
-        this.style.opacity = isDebugModeEnabled() ? '1' : '0.35';
-        runFilters();
     }
 
     function resetTool() {
@@ -972,10 +959,6 @@
         E('r-db-box').style.display = "block";
         const htmlGrid = generateDashboardGrid(activeFilters, gridData);
         E('r-db-grid').innerHTML = htmlGrid;
-
-        if (isDebugModeEnabled()) {
-            logDebugTable(activeFilters, gridData);
-        }
     }
 
     function generateDashboardGrid(activeFilters, gridData) {
@@ -1006,42 +989,13 @@
     }
 
     function generateItemsList(items, filterColor) {
-        return items.map(item => generateItemElement(item, filterColor)).join('');
-    }
-
-    function generateItemElement(item, filterColor) {
-        if (isDebugModeEnabled()) {
-            return generateDebugItem(item, filterColor);
-        }
-        return generateNormalItem(item, filterColor);
-    }
-
-    function generateDebugItem(item, filterColor) {
-        const rawTxt = item.raw.length > 0 ? item.raw.join(',') : '∅';
-        const badge = `<span style="display:inline-block; background:${COLORS.BADGE_BG}; color:#fff; font-size:${SIZES.FONT_XS}; font-family:monospace; padding:${SIZES.BADGE_PADDING}; border-radius:${SIZES.BORDER_RADIUS}; margin-right:4px;">${rawTxt}</span>`;
-        return `<div class="r-it" style="border-left:3px solid ${filterColor} !important;" title="Linear brut(s): ${rawTxt}">${badge}${item.t}</div>`;
+        return items.map(item => generateNormalItem(item, filterColor)).join('');
     }
 
     function generateNormalItem(item, filterColor) {
-        const dot = hasStatus(item) ? `<span style="display:inline-block; width:${SIZES.DOT}px; height:${SIZES.DOT}px; min-width:${SIZES.DOT}px; border-radius:50%; background:${item.st.c}; margin-right:6px; vertical-align:middle;"></span>` : '';
+        const dot = hasStatus(item) ? `<span style="display:inline-block; width:${SIZES.DOT}px; height:${SIZES.DOT}px; min-width:${SIZES.DOT}px; border-radius:50%; background:${item.st.c}; margin-right:6px;"></span>` : '';
         const title = (hasStatus(item) ? item.st.label + ' — ' : '') + item.t;
         return `<div class="r-it" style="border-left:3px solid ${filterColor} !important;" title="${title}">${dot}${item.t}</div>`;
-    }
-
-    function logDebugTable(activeFilters, gridData) {
-        let debugTable = [];
-        activeFilters.forEach(filter => {
-            gridData[filter.id].forEach(item => {
-                debugTable.push({
-                    Composant: item.t,
-                    Categorie: filter.n,
-                    'Linear bruts': item.raw.join(',') || '∅',
-                    'Statut devine': hasStatus(item) ? item.st.label : '-'
-                });
-            });
-        });
-        console.log('%c🎯 SNIPER MAP - Diagnostic Linear IDs', `color:${COLORS.PRIMARY};font-weight:bold;`);
-        console.table(debugTable);
     }
 
     function performInitialSearch() {
