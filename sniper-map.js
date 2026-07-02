@@ -1,5 +1,5 @@
 /**
- * 🎯 SNIPER MAP - Version 36 (Clean Code + Guard Clauses + Filtres CRUD persistés)
+ * 🎯 SNIPER MAP - Version 37 (Filtres CRUD + Export CSV + Recherche croisée + Import/Export filtres)
  * Outil d'aide à la navigation, filtrage SVG et analyse pour Mega Hopex.
  * Charte graphique : Design System Ameli (Clair).
  */
@@ -138,7 +138,9 @@
         searchTimeout: null,
         isDragging: false,
         isResizing: false,
-        filters: [] // Peuplé au démarrage par loadFilters() (localStorage ou valeurs par défaut)
+        filters: [], // Peuplé au démarrage par loadFilters() (localStorage ou valeurs par défaut)
+        lastActiveFilters: [], // Snapshot du dernier calcul de filtres (pour l'export CSV)
+        lastGridData: {}       // Snapshot des données du dashboard (pour l'export CSV)
     };
 
     // ============ UTILITAIRES TEXTE/HTML ============
@@ -537,7 +539,7 @@
             .r-fm-row input[type="text"] { width: 100%; padding: 4px 6px; font-size: 11px; border: 1px solid ${COLORS.GRAY_TEXT}; border-radius: 4px; box-sizing: border-box; color: ${COLORS.DARK_TEXT}; background: ${COLORS.LIGHT_BG}; }
             .r-fm-row input[type="color"] { width: 26px; height: 24px; padding: 0; border: none; cursor: pointer; background: none; }
             .r-fm-del { cursor: pointer; text-align: center; font-size: 13px; user-select: none; }
-            #r-fm-add, #r-fm-reset { font-size: 11px; padding: 6px; border-radius: ${SIZES.BORDER_RADIUS}; cursor: pointer; border: none; font-weight: bold; }
+            #r-fm-add, #r-fm-reset, #r-fm-exp, #r-fm-imp { font-size: 11px; padding: 6px; border-radius: ${SIZES.BORDER_RADIUS}; cursor: pointer; border: none; font-weight: bold; }
         `;
     }
 
@@ -555,7 +557,7 @@
     function generatePanelHTML() {
         return `
             <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px;">
-                <span>🎯 SNIPER MAP V36</span>
+                <span>🎯 SNIPER MAP V37</span>
                 <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
                     <span id="r-rst" style="color:${COLORS.SECONDARY}">↺ Reset</span>
                     <span id="r-mn">─</span>
@@ -623,9 +625,13 @@
     function generateDashboardHTML() {
         return `
             <div style="position:absolute; left:${DASHBOARD_DIMS.HANDLE_LEFT}px; top:0; width:${DASHBOARD_DIMS.HANDLE_WIDTH}px; height:100%; cursor:ew-resize; z-index:${ZINDEX.MODAL_RESIZE}; background:transparent;" id="r-db-hdl"></div>
-            <div style="display:flex; justify-content:space-between; border-bottom:2px solid ${COLORS.BORDER}; padding-bottom:10px">
-                <div><h2 style="margin:0; color:${COLORS.PRIMARY}; font-size:18px;">🎯 SNIPER DASHBOARD</h2></div>
-                <div style="display:flex; gap:12px; font-size:11px; align-items:center; color:${COLORS.GRAY_TEXT};">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid ${COLORS.BORDER}; padding-bottom:10px">
+                <div>
+                    <h2 style="margin:0; color:${COLORS.PRIMARY}; font-size:18px;">🎯 SNIPER DASHBOARD</h2>
+                    <div id="r-db-sub" style="font-size:11px; color:${COLORS.GRAY_TEXT}; margin-top:4px; display:none;"></div>
+                </div>
+                <div style="display:flex; gap:10px; font-size:11px; align-items:center; color:${COLORS.GRAY_TEXT};">
+                    <button id="r-db-exp" style="background:${COLORS.SECONDARY}; color:white; border:none; padding:6px 12px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold" title="Exporter les résultats affichés en CSV">⬇️ Export CSV</button>
                     <button id="r-db-cls" style="background:${COLORS.PRIMARY}; color:white; border:none; padding:6px 12px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold">✕ Fermer</button>
                 </div>
             </div>
@@ -665,6 +671,11 @@
                 <div style="display:flex; gap:6px; margin-top:4px;">
                     <button id="r-fm-add" style="flex:1; background:${COLORS.PRIMARY}; color:white;">+ Ajouter un filtre</button>
                     <button id="r-fm-reset" style="flex:1; background:${COLORS.BORDER}; color:${COLORS.DANGER};">↺ Défaut</button>
+                </div>
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                    <button id="r-fm-exp" style="flex:1; background:${COLORS.LIGHT_GRAY}; color:${COLORS.SECONDARY}; border:1px solid ${COLORS.BORDER};" title="Exporter la configuration des filtres en JSON">⬇️ Exporter</button>
+                    <button id="r-fm-imp" style="flex:1; background:${COLORS.LIGHT_GRAY}; color:${COLORS.SECONDARY}; border:1px solid ${COLORS.BORDER};" title="Importer une configuration de filtres JSON">⬆️ Importer</button>
+                    <input type="file" id="r-fm-imp-inp" accept="application/json,.json" style="display:none;">
                 </div>
             </div>
         `;
@@ -736,6 +747,16 @@
             renderFilterManagerList();
             renderFilterCheckboxes();
             runFilters();
+        };
+
+        E('r-fm-exp').onclick = exportFiltersToJSON;
+
+        E('r-fm-imp').onclick = () => E('r-fm-imp-inp').click();
+
+        E('r-fm-imp-inp').onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) importFiltersFromFile(file);
+            e.target.value = '';
         };
 
         E('r-fm-mdl').addEventListener('click', (e) => {
@@ -820,6 +841,7 @@
     function attachDashboardToggleListeners() {
         E('r-sh-db').onclick = openDashboard;
         E('r-db-cls').onclick = closeDashboard;
+        E('r-db-exp').onclick = exportDashboardToCSV;
         D.addEventListener('keydown', (e) => {
             if (isEscapeKey(e.key)) {
                 closeDashboard();
@@ -842,9 +864,14 @@
     function attachSearchInputListener() {
         E('r-s').oninput = () => {
             clearTimeout(STATE.searchTimeout);
-            STATE.searchTimeout = setTimeout(searchMapText, ANIMATION.SEARCH_DEBOUNCE_MS);
+            STATE.searchTimeout = setTimeout(handleSearchChange, ANIMATION.SEARCH_DEBOUNCE_MS);
         };
         E('r-s').onfocus = function() { this.select(); };
+    }
+
+    function handleSearchChange() {
+        searchMapText();
+        runFilters();
     }
 
     function attachNavigationButtonListeners() {
@@ -903,11 +930,14 @@
         resetSVGViewBoxes();
         STATE.targets = [];
         STATE.currentIndex = 0;
+        STATE.lastActiveFilters = [];
+        STATE.lastGridData = {};
         E('r-ct').textContent = "0 / 0";
         E('r-f-cnt').textContent = "0";
         E('r-pv').textContent = "-";
         E('r-pv').style.display = "none";
         E('r-db-box').style.display = "none";
+        updateDashboardSubtitle('');
         closeDashboard();
         E('r-db-grid').innerHTML = "";
     }
@@ -1140,10 +1170,15 @@
             return;
         }
 
-        const gridData = processFilteredComponents(activeFilters);
+        const query = getCurrentSearchQuery();
+        const gridData = processFilteredComponents(activeFilters, query);
         const totalCount = Object.values(gridData).reduce((sum, arr) => sum + arr.length, 0);
 
-        updateFilterUI(totalCount, activeFilters, gridData);
+        updateFilterUI(totalCount, activeFilters, gridData, query);
+    }
+
+    function getCurrentSearchQuery() {
+        return E('r-s').value.trim().toLowerCase();
     }
 
     function getActiveFilters() {
@@ -1155,11 +1190,14 @@
 
     function handleNoActiveFilters() {
         E('r-f-cnt').textContent = "0";
+        STATE.lastActiveFilters = [];
+        STATE.lastGridData = {};
+        updateDashboardSubtitle('');
         E('r-db-box').style.display = "none";
         closeDashboard();
     }
 
-    function processFilteredComponents(activeFilters) {
+    function processFilteredComponents(activeFilters, query = '') {
         const gridData = {};
         const filterCoords = [];
         const statusCache = buildStatusShapeStrokeCache();
@@ -1172,6 +1210,8 @@
 
             const match = findMatchingFilter(group, activeFilters);
             if (match === undefined) return;
+
+            if (query && matchesSearchQuery(group.textContent, query) === false) return;
 
             const center = getComponentCenter(el);
             if (hasInvalidCenter(center)) return;
@@ -1197,18 +1237,36 @@
         return activeFilters.find(act => filterMatchesComponent(act, txt));
     }
 
-    function updateFilterUI(totalCount, activeFilters, gridData) {
+    function updateFilterUI(totalCount, activeFilters, gridData, query = '') {
         E('r-f-cnt').textContent = totalCount;
+        updateDashboardSubtitle(query);
 
         if (totalCount === 0) {
+            STATE.lastActiveFilters = [];
+            STATE.lastGridData = {};
             E('r-db-box').style.display = "none";
             closeDashboard();
             return;
         }
 
+        STATE.lastActiveFilters = activeFilters;
+        STATE.lastGridData = gridData;
+
         E('r-db-box').style.display = "block";
         const htmlGrid = generateDashboardGrid(activeFilters, gridData);
         E('r-db-grid').innerHTML = htmlGrid;
+    }
+
+    function updateDashboardSubtitle(query) {
+        const sub = E('r-db-sub');
+        if (sub === null) return;
+
+        if (query) {
+            sub.textContent = `Filtré par recherche : "${query}"`;
+            sub.style.display = 'block';
+        } else {
+            sub.style.display = 'none';
+        }
     }
 
     function generateDashboardGrid(activeFilters, gridData) {
@@ -1250,6 +1308,99 @@
 
     function performInitialSearch() {
         searchMapText();
+    }
+
+    // ============ EXPORT / IMPORT ============
+
+    function triggerDownload(content, filename, mime) {
+        const blob = new Blob([content], { type: mime });
+        const url = URL.createObjectURL(blob);
+        const link = D.createElement('a');
+        link.href = url;
+        link.download = filename;
+        D.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function buildTimestamp() {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+    }
+
+    // --- Export CSV du dashboard ---
+
+    function csvEscape(value) {
+        const str = String(value ?? '');
+        if (/[;"\r\n]/.test(str)) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    }
+
+    function hasExportableData() {
+        return STATE.lastActiveFilters.length > 0;
+    }
+
+    function exportDashboardToCSV() {
+        if (hasExportableData() === false) {
+            alert('Aucun résultat à exporter : activez au moins un filtre avec des éléments trouvés.');
+            return;
+        }
+
+        const rows = [['Filtre', 'Composant', 'Statut']];
+        STATE.lastActiveFilters.forEach(filter => {
+            const items = STATE.lastGridData[filter.id] || [];
+            items.forEach(item => {
+                rows.push([filter.n, item.t, hasStatus(item) ? item.st.label : '-']);
+            });
+        });
+
+        const csvBody = rows.map(row => row.map(csvEscape).join(';')).join('\r\n');
+        const BOM = '\uFEFF'; // Pour un affichage correct des accents dans Excel
+        triggerDownload(BOM + csvBody, `sniper-map-export-${buildTimestamp()}.csv`, 'text/csv;charset=utf-8;');
+    }
+
+    // --- Export / Import JSON des filtres ---
+
+    function exportFiltersToJSON() {
+        const json = JSON.stringify(STATE.filters, null, 2);
+        triggerDownload(json, `sniper-map-filtres-${buildTimestamp()}.json`, 'application/json;charset=utf-8;');
+    }
+
+    function importFiltersFromFile(file) {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+            let parsed;
+            try {
+                parsed = JSON.parse(reader.result);
+            } catch (e) {
+                alert('Impossible de lire ce fichier : ce n\'est pas un JSON valide.');
+                return;
+            }
+
+            if (Array.isArray(parsed) === false || parsed.length === 0 || parsed.every(isValidStoredFilter) === false) {
+                alert('Fichier invalide : le format ne correspond pas à une configuration de filtres Sniper Map.');
+                return;
+            }
+
+            if (confirm(`Remplacer les ${STATE.filters.length} filtres actuels par les ${parsed.length} filtres importés ?`) === false) return;
+
+            STATE.filters = parsed;
+            saveFilters();
+            renderFilterManagerList();
+            renderFilterCheckboxes();
+            runFilters();
+        };
+
+        reader.onerror = () => {
+            alert('Erreur lors de la lecture du fichier.');
+        };
+
+        reader.readAsText(file);
     }
 
     // ============ LANCEMENT DE L'APPLICATION ============
