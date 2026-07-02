@@ -7,10 +7,10 @@
 ## 📌 À propos
 
 **Sniper Map** est un bookmarklet conçu pour améliorer l'expérience utilisateur dans **Mega Hopex** en offrant :
-- Une **recherche rapide** dans les éléments SVG.
-- Un **filtrage par nature de composant** (EIP, Topic, BDD, API, Micro Service, Batch), **entièrement personnalisable** (ajout, édition, suppression) et **sauvegardé automatiquement**.
+- Une **recherche rapide** dans les éléments SVG, combinable avec les filtres actifs.
+- Un **filtrage par nature de composant** (EIP, Topic, BDD, API, Micro Service, Batch), **entièrement personnalisable** (ajout, édition, suppression), **sauvegardé automatiquement**, et **exportable/partageable** entre collègues.
 - Une **visualisation ciblée** ou globale des résultats.
-- Un **dashboard latéral** pour analyser les résultats filtrés.
+- Un **dashboard latéral** pour analyser les résultats filtrés, avec **export CSV**.
 - Une **intégration discrète** via un panneau flottant.
 
 ---
@@ -59,19 +59,24 @@ Les résultats filtrés apparaissent dans le **dashboard latéral** avec :
 
 > Ces 6 filtres sont les valeurs **par défaut**. Ils peuvent être modifiés librement via la gestion des filtres (voir ci-dessous).
 
-### 4. **Gestion des filtres (CRUD) — Nouveau**
+> 🔎 **Recherche croisée** : si vous saisissez un terme dans la barre de recherche pendant qu'un ou plusieurs filtres sont actifs, seuls les éléments correspondant **à la fois** au(x) filtre(s) et au terme recherché sont affichés dans le dashboard et sur la carte (ex : rechercher "paiement" avec le filtre "Batch" actif n'affiche que les flux Batch contenant "paiement"). Un sous-titre dans le dashboard indique le terme de recherche appliqué.
+
+### 4. **Gestion des filtres (CRUD)**
 Cliquez sur l'icône **⚙️** à côté du titre "FILTRES" pour ouvrir la fenêtre de gestion. Vous pouvez :
 - **➕ Ajouter** un nouveau filtre (bouton "+ Ajouter un filtre").
 - **✏️ Modifier** le nom, la couleur et les mots-clés de n'importe quel filtre (les mots-clés se saisissent séparés par des virgules, ex. `api, rest, endpoint`).
 - **🗑️ Supprimer** un filtre existant (confirmation demandée).
 - **↺ Réinitialiser** l'ensemble des filtres aux 6 valeurs par défaut (EIP, Topic, BDD, API, Micro Service, Batch).
+- **⬇️ Exporter** votre configuration de filtres au format `.json`.
+- **⬆️ Importer** un fichier `.json` de filtres (remplace la configuration actuelle, confirmation demandée) — pratique pour partager un set de filtres standard entre collègues.
 
-Chaque modification est **automatiquement sauvegardée dans le localStorage de votre navigateur** : vos filtres personnalisés sont conservés d'une session à l'autre, sans avoir à les recréer. Cette sauvegarde est locale à votre navigateur/poste (elle n'est pas partagée entre utilisateurs ni entre navigateurs différents).
+Chaque modification est **automatiquement sauvegardée dans le localStorage de votre navigateur** : vos filtres personnalisés sont conservés d'une session à l'autre, sans avoir à les recréer. Cette sauvegarde est locale à votre navigateur/poste (elle n'est pas partagée entre utilisateurs ni entre navigateurs différents) — d'où l'intérêt de l'export/import pour la diffuser en équipe.
 
 ### 5. **Dashboard latéral**
 - Ouvrez-le avec le bouton **📊 VOIR LE DASHBOARD**.
 - Fermez-le avec le bouton **✕ Fermer** ou la touche **Échap**.
 - Redimensionnez-le en glissant la poignée à gauche.
+- **⬇️ Export CSV** : exportez les résultats actuellement affichés (filtre, nom du composant, statut) dans un fichier `.csv` compatible Excel (accents et séparateur `;` gérés). Pratique pour un compte-rendu ou une revue d'impact. Le bouton n'exporte que ce qui est visible à l'instant T (filtres actifs + recherche éventuelle).
 
 ### 6. **Réinitialisation**
 - Cliquez sur **↺ Reset** pour :
@@ -109,7 +114,7 @@ Chaque modification est **automatiquement sauvegardée dans le localStorage de v
 hopex-search-component/
 ├── README.md               # Documentation
 ├── install.html            # Page d'installation automatique (Drag & Drop)
-└── sniper-map.js           # Code source non minifié du bookmarklet (V36)
+└── sniper-map.js           # Code source non minifié du bookmarklet (V37)
 ```
 
 ### Contribuer
@@ -125,6 +130,7 @@ hopex-search-component/
 
 | Version | Date       | Description                                                                                     |
 |---------|------------|-------------------------------------------------------------------------------------------------|
+| V0.0.37    | 2026-07-02 | **Correctif** : les flux (identifiés par un code du type `NNNNN - Libellé`) n'étaient plus détectés en recherche ni en filtrage, à cause d'une exclusion trop large destinée aux légendes. **Nouveautés** : export CSV des résultats du dashboard, croisement recherche texte + filtres actifs, import/export JSON de la configuration des filtres (partage d'équipe). |
 | V0.0.36    | 2026-07-02 | Ajout de la **gestion CRUD des filtres** (créer, éditer, supprimer, réinitialiser) via une fenêtre dédiée, avec **sauvegarde automatique en localStorage** pour conserver les filtres personnalisés d'une session à l'autre. |
 | V0.0.35    | 2026-07-01 | Intégration de `install.html`. Résolution définitive du bug `Unexpected end of input` lié à l'IHM des navigateurs et aux commentaires monolignes. |
 
