@@ -197,10 +197,6 @@
 
     // ============ PRÉDICATS DE TEXTE ============
 
-    function isLegendItem(text) {
-        return /^\s*\d{5}\s*[-–]/.test(text.trim());
-    }
-
     function matchesSearchQuery(text, query) {
         return text.toLowerCase().includes(query);
     }
@@ -1109,7 +1105,6 @@
         Q('svg text, svg tspan').forEach(el => {
             const group = el.closest('g');
             if (componentHasNoGroup(el)) return;
-            if (isLegendItem(group.textContent)) return;
 
             if (matchesSearchQuery(group.textContent, query)) {
                 const center = getComponentCenter(el);
