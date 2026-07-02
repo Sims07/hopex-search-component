@@ -1169,7 +1169,6 @@
         Q('svg text, svg tspan').forEach(el => {
             const group = el.closest('g');
             if (componentHasNoGroup(el)) return;
-            if (isLegendItem(group.textContent)) return;
 
             const match = findMatchingFilter(group, activeFilters);
             if (match === undefined) return;
