@@ -8,7 +8,7 @@
 
 **Sniper Map** est un bookmarklet conçu pour améliorer l'expérience utilisateur dans **Mega Hopex** en offrant :
 - Une **recherche rapide** dans les éléments SVG.
-- Un **filtrage par technologie** (EIP, Topic, BDD, API, Micro Service, Batch).
+- Un **filtrage par nature de composant** (EIP, Topic, BDD, API, Micro Service, Batch).
 - Une **visualisation ciblée** ou globale des résultats.
 - Un **dashboard latéral** pour analyser les résultats filtrés.
 - Une **intégration discrète** via un panneau flottant.
