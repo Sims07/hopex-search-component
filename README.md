@@ -8,7 +8,7 @@
 
 **Sniper Map** est un bookmarklet conçu pour améliorer l'expérience utilisateur dans **Mega Hopex** en offrant :
 - Une **recherche rapide** dans les éléments SVG.
-- Un **filtrage par nature de composant** (EIP, Topic, BDD, API, Micro Service, Batch).
+- Un **filtrage par nature de composant** (EIP, Topic, BDD, API, Micro Service, Batch), **entièrement personnalisable** (ajout, édition, suppression) et **sauvegardé automatiquement**.
 - Une **visualisation ciblée** ou globale des résultats.
 - Un **dashboard latéral** pour analyser les résultats filtrés.
 - Une **intégration discrète** via un panneau flottant.
@@ -57,23 +57,36 @@ Les résultats filtrés apparaissent dans le **dashboard latéral** avec :
 - Le nombre d'éléments par catégorie.
 - La liste des éléments correspondants.
 
-### 4. **Dashboard latéral**
+> Ces 6 filtres sont les valeurs **par défaut**. Ils peuvent être modifiés librement via la gestion des filtres (voir ci-dessous).
+
+### 4. **Gestion des filtres (CRUD) — Nouveau**
+Cliquez sur l'icône **⚙️** à côté du titre "FILTRES" pour ouvrir la fenêtre de gestion. Vous pouvez :
+- **➕ Ajouter** un nouveau filtre (bouton "+ Ajouter un filtre").
+- **✏️ Modifier** le nom, la couleur et les mots-clés de n'importe quel filtre (les mots-clés se saisissent séparés par des virgules, ex. `api, rest, endpoint`).
+- **🗑️ Supprimer** un filtre existant (confirmation demandée).
+- **↺ Réinitialiser** l'ensemble des filtres aux 6 valeurs par défaut (EIP, Topic, BDD, API, Micro Service, Batch).
+
+Chaque modification est **automatiquement sauvegardée dans le localStorage de votre navigateur** : vos filtres personnalisés sont conservés d'une session à l'autre, sans avoir à les recréer. Cette sauvegarde est locale à votre navigateur/poste (elle n'est pas partagée entre utilisateurs ni entre navigateurs différents).
+
+### 5. **Dashboard latéral**
 - Ouvrez-le avec le bouton **📊 VOIR LE DASHBOARD**.
 - Fermez-le avec le bouton **✕ Fermer** ou la touche **Échap**.
 - Redimensionnez-le en glissant la poignée à gauche.
 
-### 5. **Réinitialisation**
+### 6. **Réinitialisation**
 - Cliquez sur **↺ Reset** pour :
   - Effacer la recherche.
   - Désactiver tous les filtres.
   - Réinitialiser la vue SVG.
   - Fermer le dashboard.
 
-### 6. **Minimisation du panneau**
+> ℹ️ Ce bouton "↺ Reset" réinitialise l'état de recherche/affichage, **pas** la liste des filtres personnalisés. Pour revenir aux 6 filtres par défaut, utilisez le bouton "↺ Défaut" dans la fenêtre de gestion des filtres (⚙️).
+
+### 7. **Minimisation du panneau**
 - Cliquez sur **─** pour minimiser le panneau.
 - Cliquez sur **🗖** pour le restaurer.
 
-### 7. **Fermeture complète**
+### 8. **Fermeture complète**
 - Cliquez sur **✕** pour supprimer toutes les instances de **Sniper Map**.
 
 ---
@@ -96,7 +109,7 @@ Les résultats filtrés apparaissent dans le **dashboard latéral** avec :
 hopex-search-component/
 ├── README.md               # Documentation
 ├── install.html            # Page d'installation automatique (Drag & Drop)
-└── sniper-map-v30.js       # Code source non minifié du bookmarklet (V30)
+└── sniper-map.js           # Code source non minifié du bookmarklet (V36)
 ```
 
 ### Contribuer
@@ -112,6 +125,7 @@ hopex-search-component/
 
 | Version | Date       | Description                                                                                     |
 |---------|------------|-------------------------------------------------------------------------------------------------|
+| V0.0.36    | 2026-07-02 | Ajout de la **gestion CRUD des filtres** (créer, éditer, supprimer, réinitialiser) via une fenêtre dédiée, avec **sauvegarde automatique en localStorage** pour conserver les filtres personnalisés d'une session à l'autre. |
 | V0.0.35    | 2026-07-01 | Intégration de `install.html`. Résolution définitive du bug `Unexpected end of input` lié à l'IHM des navigateurs et aux commentaires monolignes. |
 
 ---
