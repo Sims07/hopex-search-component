@@ -1,5 +1,5 @@
 /**
- * 🎯 SNIPER MAP - Version 35 (Clean Code + Guard Clauses)
+ * 🎯 SNIPER MAP - Version 36 (Clean Code + Guard Clauses + Filtres CRUD persistés)
  * Outil d'aide à la navigation, filtrage SVG et analyse pour Mega Hopex.
  * Charte graphique : Design System Ameli (Clair).
  */
@@ -115,8 +115,8 @@
         NEW_COLOR: '#009300'
     };
 
-    // Tech Filters
-    const TECH_FILTERS = [
+    // Tech Filters (valeurs par défaut / valeurs de réinitialisation)
+    const DEFAULT_TECH_FILTERS = [
         { id: 'eip', n: 'EIP', k: ['eip'], c: '#006386' },
         { id: 'top', n: 'Topic', k: ['topic'], c: '#6a0dad' },
         { id: 'bdd', n: 'BDD', k: ['bdd', 'base'], c: '#D97706' },
@@ -125,6 +125,11 @@
         { id: 'btc', n: 'Batch', k: ['batch'], c: '#F0B323' }
     ];
 
+    // Clés de persistance localStorage
+    const STORAGE_KEYS = {
+        FILTERS: 'sniperMap_customFilters_v1'
+    };
+
     // State
     const STATE = {
         targets: [],
@@ -132,13 +137,22 @@
         mode: "target",
         searchTimeout: null,
         isDragging: false,
-        isResizing: false
+        isResizing: false,
+        filters: [] // Peuplé au démarrage par loadFilters() (localStorage ou valeurs par défaut)
     };
+
+    // ============ UTILITAIRES TEXTE/HTML ============
+
+    function escapeHTML(str) {
+        const div = D.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
 
     // ============ PRÉDICATS D'INITIALISATION ============
 
     function hasExistingInstances() {
-        return Q('.' + CSS.PANEL + ', .' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE + ', [id=r-sty], [id=r-db-mdl]').length > 0;
+        return Q('.' + CSS.PANEL + ', .' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE + ', [id=r-sty], [id=r-db-mdl], [id=r-fm-mdl]').length > 0;
     }
 
     function hasSVGViewBox(svg) {
@@ -231,6 +245,114 @@
         return filter.k.some(kwd => matchesSearchQuery(componentText, kwd));
     }
 
+    function isValidFilterName(name) {
+        return typeof name === 'string' && name.trim().length > 0;
+    }
+
+    function isValidStoredFilter(f) {
+        return f !== null && typeof f === 'object' &&
+               typeof f.id === 'string' && f.id.trim().length > 0 &&
+               typeof f.n === 'string' && f.n.trim().length > 0 &&
+               Array.isArray(f.k) && f.k.length > 0 &&
+               typeof f.c === 'string' && f.c.trim().length > 0;
+    }
+
+    function isDuplicateFilterId(id) {
+        return STATE.filters.some(f => f.id === id);
+    }
+
+    // ============ PERSISTANCE DES FILTRES (localStorage) ============
+
+    function cloneDefaultFilters() {
+        return DEFAULT_TECH_FILTERS.map(f => ({ id: f.id, n: f.n, k: [...f.k], c: f.c }));
+    }
+
+    function loadFilters() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEYS.FILTERS);
+            if (raw === null) return cloneDefaultFilters();
+
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(isValidStoredFilter)) {
+                return parsed;
+            }
+            return cloneDefaultFilters();
+        } catch (e) {
+            return cloneDefaultFilters();
+        }
+    }
+
+    function saveFilters() {
+        try {
+            localStorage.setItem(STORAGE_KEYS.FILTERS, JSON.stringify(STATE.filters));
+        } catch (e) {
+            // localStorage indisponible (quota, navigation privée...) : on continue sans persister
+        }
+    }
+
+    function parseKeywords(rawKeywords) {
+        return rawKeywords
+            .split(',')
+            .map(k => k.trim().toLowerCase())
+            .filter(k => k.length > 0);
+    }
+
+    function slugify(text) {
+        return text
+            .toString()
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-+|-+$)/g, '');
+    }
+
+    function generateFilterId(name) {
+        const base = 'cf-' + (slugify(name) || 'filtre');
+        let id = base;
+        let counter = 1;
+        while (isDuplicateFilterId(id)) {
+            id = base + '-' + counter;
+            counter++;
+        }
+        return id;
+    }
+
+    // ============ CRUD FILTRES ============
+
+    function addFilter(name, rawKeywords, color) {
+        const keywords = parseKeywords(rawKeywords);
+        if (isValidFilterName(name) === false || keywords.length === 0) return null;
+
+        const filter = { id: generateFilterId(name), n: name.trim(), k: keywords, c: color || COLORS.PRIMARY };
+        STATE.filters.push(filter);
+        saveFilters();
+        return filter;
+    }
+
+    function updateFilter(id, name, rawKeywords, color) {
+        const filter = STATE.filters.find(f => f.id === id);
+        if (filter === undefined) return false;
+
+        const keywords = parseKeywords(rawKeywords);
+        if (isValidFilterName(name) === false || keywords.length === 0) return false;
+
+        filter.n = name.trim();
+        filter.k = keywords;
+        filter.c = color || filter.c;
+        saveFilters();
+        return true;
+    }
+
+    function deleteFilter(id) {
+        STATE.filters = STATE.filters.filter(f => f.id !== id);
+        saveFilters();
+    }
+
+    function resetFiltersToDefault() {
+        STATE.filters = cloneDefaultFilters();
+        saveFilters();
+    }
+
     // ============ PRÉDICATS D'INTERFACE ============
 
     function hasTargets() {
@@ -321,16 +443,18 @@
         if (hasExistingInstances()) {
             cleanupPreviousInstances();
         }
+        STATE.filters = loadFilters();
         initializeSVGViewBoxes();
         createStyleSheet();
         createPanelUI();
         createDashboardUI();
+        createFilterManagerModal();
         attachEventListeners();
         performInitialSearch();
     }
 
     function cleanupPreviousInstances() {
-        Q('.' + CSS.PANEL + ', .' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE + ', [id=r-sty], [id=r-db-mdl]')
+        Q('.' + CSS.PANEL + ', .' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE + ', [id=r-sty], [id=r-db-mdl], [id=r-fm-mdl]')
             .forEach(e => e.remove());
     }
 
@@ -410,6 +534,14 @@
             #r-ck-g { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px 12px !important; width: 100% !important; box-sizing: border-box !important; }
             .r-lbl { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; user-select: none !important; }
             .r-ck { width: ${SIZES.CHECKBOX}px !important; height: ${SIZES.CHECKBOX}px !important; min-width: ${SIZES.CHECKBOX}px !important; margin: 0 !important; padding: 0 !important; display: inline-block !important; cursor: pointer !important; }
+
+            .r-fm { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: ${ZINDEX.MODAL_RESIZE}; display: none; align-items: center; justify-content: center; font-family: sans-serif; box-sizing: border-box; }
+            .r-fm-box { background: ${COLORS.LIGHT_BG}; border-radius: 8px; padding: 14px; width: 360px; max-width: 92vw; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.25); box-sizing: border-box; }
+            .r-fm-row { display: grid; grid-template-columns: 1fr 26px 1fr 18px; gap: 6px; align-items: center; margin-bottom: 8px; }
+            .r-fm-row input[type="text"] { width: 100%; padding: 4px 6px; font-size: 11px; border: 1px solid ${COLORS.GRAY_TEXT}; border-radius: 4px; box-sizing: border-box; color: ${COLORS.DARK_TEXT}; background: ${COLORS.LIGHT_BG}; }
+            .r-fm-row input[type="color"] { width: 26px; height: 24px; padding: 0; border: none; cursor: pointer; background: none; }
+            .r-fm-del { cursor: pointer; text-align: center; font-size: 13px; user-select: none; }
+            #r-fm-add, #r-fm-reset { font-size: 11px; padding: 6px; border-radius: ${SIZES.BORDER_RADIUS}; cursor: pointer; border: none; font-weight: bold; }
         `;
     }
 
@@ -421,13 +553,13 @@
         panel.innerHTML = generatePanelHTML();
         D.body.appendChild(panel);
         
-        attachFilterCheckboxes();
+        renderFilterCheckboxes();
     }
 
     function generatePanelHTML() {
         return `
             <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px;">
-                <span>🎯 SNIPER MAP V35</span>
+                <span>🎯 SNIPER MAP V36</span>
                 <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
                     <span id="r-rst" style="color:${COLORS.SECONDARY}">↺ Reset</span>
                     <span id="r-mn">─</span>
@@ -446,9 +578,12 @@
                 </div>
             </div>
             <div style="background:${COLORS.LIGHT_GRAY}; padding:${SIZES.PADDING_MD}; border-radius:${SIZES.BORDER_RADIUS}; border:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px; color:${COLORS.GRAY_TEXT}; font-size:11px; font-weight:bold;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; color:${COLORS.GRAY_TEXT}; font-size:11px; font-weight:bold;">
                     <span>⚡ FILTRES</span>
-                    <span style="color:${COLORS.PRIMARY};">Actifs : <span id="r-f-cnt">0</span></span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="r-fm-open" style="color:${COLORS.PRIMARY}; cursor:pointer;" title="Gérer les filtres">⚙️</span>
+                        <span style="color:${COLORS.PRIMARY};">Actifs : <span id="r-f-cnt">0</span></span>
+                    </div>
                 </div>
                 <div id="r-ck-g"></div>
             </div>
@@ -459,15 +594,26 @@
         `;
     }
 
-    function attachFilterCheckboxes() {
+    function renderFilterCheckboxes() {
         const container = E('r-ck-g');
-        TECH_FILTERS.forEach(filter => {
+        const previouslyChecked = new Set(
+            Array.from(Q('.r-ck')).filter(isFilterActive).map(c => c.value)
+        );
+
+        container.innerHTML = '';
+        STATE.filters.forEach(filter => {
             const label = D.createElement('label');
             label.className = 'r-lbl';
             label.style.color = COLORS.DARK_TEXT;
-            label.innerHTML = `<input type="checkbox" class="r-ck" value="${filter.id}" style="accent-color:${filter.c} !important;"> ${filter.n}`;
+            label.innerHTML = `<input type="checkbox" class="r-ck" value="${filter.id}" style="accent-color:${filter.c} !important;"> ${escapeHTML(filter.n)}`;
             container.appendChild(label);
         });
+
+        Q('.r-ck').forEach(c => {
+            if (previouslyChecked.has(c.value)) c.checked = true;
+        });
+
+        attachFilterCheckboxListeners();
     }
 
     function createDashboardUI() {
@@ -502,6 +648,114 @@
         `;
     }
 
+    // ============ MODALE DE GESTION DES FILTRES (CRUD) ============
+
+    function createFilterManagerModal() {
+        const modal = D.createElement('div');
+        modal.id = 'r-fm-mdl';
+        modal.className = 'r-fm';
+        modal.innerHTML = generateFilterManagerHTML();
+        D.body.appendChild(modal);
+    }
+
+    function generateFilterManagerHTML() {
+        return `
+            <div class="r-fm-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px; margin-bottom:10px;">
+                    <span style="font-weight:bold; color:${COLORS.PRIMARY}; font-size:13px;">⚙️ Gérer les filtres</span>
+                    <span id="r-fm-cls" style="cursor:pointer; font-family:monospace;">✕</span>
+                </div>
+                <div id="r-fm-list"></div>
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                    <button id="r-fm-add" style="flex:1; background:${COLORS.PRIMARY}; color:white;">+ Ajouter un filtre</button>
+                    <button id="r-fm-reset" style="flex:1; background:${COLORS.BORDER}; color:${COLORS.DANGER};">↺ Défaut</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderFilterManagerList() {
+        const list = E('r-fm-list');
+        if (list === null) return;
+
+        list.innerHTML = STATE.filters.map(generateFilterManagerRow).join('');
+        attachFilterManagerRowListeners();
+    }
+
+    function generateFilterManagerRow(filter) {
+        return `
+            <div class="r-fm-row" data-id="${filter.id}">
+                <input type="text" class="r-fm-name" value="${escapeHTML(filter.n)}" placeholder="Nom du filtre">
+                <input type="color" class="r-fm-color" value="${filter.c}">
+                <input type="text" class="r-fm-kw" value="${escapeHTML(filter.k.join(', '))}" placeholder="mots-clés, séparés, par virgule">
+                <span class="r-fm-del" title="Supprimer ce filtre">🗑</span>
+            </div>
+        `;
+    }
+
+    function attachFilterManagerRowListeners() {
+        Q('.r-fm-row').forEach(row => {
+            const id = row.getAttribute('data-id');
+            const nameInput = row.querySelector('.r-fm-name');
+            const colorInput = row.querySelector('.r-fm-color');
+            const kwInput = row.querySelector('.r-fm-kw');
+            const delBtn = row.querySelector('.r-fm-del');
+
+            const commitChanges = () => {
+                const ok = updateFilter(id, nameInput.value, kwInput.value, colorInput.value);
+                if (ok) {
+                    renderFilterCheckboxes();
+                    runFilters();
+                }
+            };
+
+            nameInput.onblur = commitChanges;
+            kwInput.onblur = commitChanges;
+            colorInput.onchange = commitChanges;
+
+            delBtn.onclick = () => {
+                if (confirm(`Supprimer le filtre "${nameInput.value}" ?`) === false) return;
+                deleteFilter(id);
+                renderFilterManagerList();
+                renderFilterCheckboxes();
+                runFilters();
+            };
+        });
+    }
+
+    function attachFilterManagerListeners() {
+        E('r-fm-open').onclick = openFilterManager;
+        E('r-fm-cls').onclick = closeFilterManager;
+
+        E('r-fm-add').onclick = () => {
+            const filter = addFilter('Nouveau filtre', 'motclé', COLORS.PRIMARY);
+            if (filter === null) return;
+            renderFilterManagerList();
+            renderFilterCheckboxes();
+        };
+
+        E('r-fm-reset').onclick = () => {
+            if (confirm('Réinitialiser tous les filtres aux valeurs par défaut (EIP, Topic, BDD, API, Micro Service, Batch) ?') === false) return;
+            resetFiltersToDefault();
+            renderFilterManagerList();
+            renderFilterCheckboxes();
+            runFilters();
+        };
+
+        E('r-fm-mdl').addEventListener('click', (e) => {
+            if (e.target.id === 'r-fm-mdl') closeFilterManager();
+        });
+    }
+
+    function openFilterManager() {
+        renderFilterManagerList();
+        E('r-fm-mdl').style.display = 'flex';
+    }
+
+    function closeFilterManager() {
+        E('r-fm-mdl').style.display = 'none';
+    }
+
     // ============ GESTION DES ÉVÉNEMENTS ============
 
     function attachEventListeners() {
@@ -513,6 +767,7 @@
         attachSearchInputListener();
         attachNavigationButtonListeners();
         attachModeToggleListener();
+        attachFilterManagerListeners();
     }
 
     function attachPanelDragListeners() {
@@ -635,6 +890,7 @@
         Q('.' + CSS.TARGET_CIRCLE + ', .' + CSS.FILTER_CIRCLE).forEach(e => e.remove());
         D.removeEventListener('keydown', (e) => { if (isEscapeKey(e.key)) closeDashboard(); });
         E('r-db-mdl').remove();
+        E('r-fm-mdl').remove();
         document.querySelector('.' + CSS.PANEL).remove();
     }
 
@@ -898,7 +1154,7 @@
     function getActiveFilters() {
         return Array.from(Q('.r-ck'))
             .filter(isFilterActive)
-            .map(c => TECH_FILTERS.find(t => t.id === c.value))
+            .map(c => STATE.filters.find(t => t.id === c.value))
             .filter(isValidFilter);
     }
 
@@ -979,7 +1235,7 @@
         return `
             <div class="r-cd" style="border-top:4px solid ${filter.c}">
                 <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:4px;">
-                    <span style="color:${filter.c}; font-weight:bold; font-size:12px;">■ ${filter.n}</span>
+                    <span style="color:${filter.c}; font-weight:bold; font-size:12px;">■ ${escapeHTML(filter.n)}</span>
                     <span style="background:${filter.c}; color:white; font-weight:bold; font-size:10px; padding:${SIZES.BADGE_PADDING}; border-radius:10px;">${items.length}</span>
                 </div>
                 <div style="display:flex; flex-direction:column; overflow-y:auto; max-height:400px !important; gap:2px !important;">
