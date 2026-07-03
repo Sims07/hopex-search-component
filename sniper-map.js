@@ -1,5 +1,5 @@
 /**
- * 🎯 SNIPER MAP - Version 38 (+ Recherche multi-termes ET/OU + Raccourcis clavier)
+ * 🎯 SNIPER MAP - Version 40 (Correctif : compteur figé en mode Global)
  * Outil d'aide à la navigation, filtrage SVG et analyse pour Mega Hopex.
  * Charte graphique : Design System Ameli (Clair).
  */
@@ -568,6 +568,7 @@
                 box-sizing: border-box !important; flex-shrink: 0 !important; border: 1px solid ${COLORS.BORDER} !important; 
             }
             
+            #r-p:disabled, #r-nx:disabled { opacity: 0.4 !important; cursor: not-allowed !important; }
             #r-ck-g { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px 12px !important; width: 100% !important; box-sizing: border-box !important; }
             .r-lbl { display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; user-select: none !important; }
             .r-ck { width: ${SIZES.CHECKBOX}px !important; height: ${SIZES.CHECKBOX}px !important; min-width: ${SIZES.CHECKBOX}px !important; margin: 0 !important; padding: 0 !important; display: inline-block !important; cursor: pointer !important; }
@@ -596,7 +597,7 @@
     function generatePanelHTML() {
         return `
             <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px;">
-                <span>🎯 SNIPER MAP V38</span>
+                <span>🎯 SNIPER MAP V40</span>
                 <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
                     <span id="r-rst" style="color:${COLORS.SECONDARY}">↺ Reset</span>
                     <span id="r-mn">─</span>
@@ -605,7 +606,7 @@
             </div>
             <div style="margin-bottom:6px;">
                 <input type="text" id="r-s" placeholder="Rechercher... (ex: eip paiement OU batch)">
-                <div style="font-size:${SIZES.FONT_SM}; color:${COLORS.GRAY_TEXT}; margin:2px 0 6px 0;">↵ Rechercher · ← → Naviguer · espace = ET, OU = alternative</div>
+                <div style="font-size:${SIZES.FONT_XS}; color:${COLORS.GRAY_TEXT}; margin:2px 0 6px 0;">Entrée : rechercher · ← → : naviguer · espace = ET, OU = alternative</div>
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
                     <span>Mode: <button id="r-m" style="background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; padding:2px 6px; font-weight:bold;">🎯 Ciblé</button></span>
                     <span id="r-ct" style="color:${COLORS.PRIMARY}; font-weight:bold;">0 / 0</span>
@@ -620,7 +621,7 @@
                     <span>⚡ FILTRES</span>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span id="r-fm-open" style="color:${COLORS.PRIMARY}; cursor:pointer;" title="Gérer les filtres">⚙️</span>
-                        <span style="color:${COLORS.PRIMARY};">Actifs : <span id="r-f-cnt">0</span></span>
+                        <span style="color:${COLORS.PRIMARY}; font-size:10px;"><span id="r-af-cnt">0</span> filtre(s) · <span id="r-f-cnt">0</span> résultat(s)</span>
                     </div>
                 </div>
                 <div id="r-ck-g"></div>
@@ -667,12 +668,12 @@
             <div style="position:absolute; left:${DASHBOARD_DIMS.HANDLE_LEFT}px; top:0; width:${DASHBOARD_DIMS.HANDLE_WIDTH}px; height:100%; cursor:ew-resize; z-index:${ZINDEX.MODAL_RESIZE}; background:transparent;" id="r-db-hdl"></div>
             <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid ${COLORS.BORDER}; padding-bottom:10px">
                 <div>
-                    <h2 style="margin:0; color:${COLORS.PRIMARY}; font-size:18px;">🎯 SNIPER DASHBOARD</h2>
+                    <h2 style="margin:0; color:${COLORS.PRIMARY}; font-size:14px; white-space:nowrap;">🎯 SNIPER DASHBOARD</h2>
                     <div id="r-db-sub" style="font-size:11px; color:${COLORS.GRAY_TEXT}; margin-top:4px; display:none;"></div>
                 </div>
-                <div style="display:flex; gap:10px; font-size:11px; align-items:center; color:${COLORS.GRAY_TEXT};">
-                    <button id="r-db-exp" style="background:${COLORS.SECONDARY}; color:white; border:none; padding:6px 12px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold" title="Exporter les résultats affichés en CSV">⬇️ Export CSV</button>
-                    <button id="r-db-cls" style="background:${COLORS.PRIMARY}; color:white; border:none; padding:6px 12px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold">✕ Fermer</button>
+                <div style="display:flex; gap:8px; font-size:11px; align-items:center; color:${COLORS.GRAY_TEXT}; flex-shrink:0;">
+                    <button id="r-db-exp" style="background:${COLORS.SECONDARY}; color:white; border:none; padding:6px 10px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold; white-space:nowrap;" title="Exporter les résultats affichés en CSV">⬇️ Export CSV</button>
+                    <button id="r-db-cls" style="background:${COLORS.PRIMARY}; color:white; border:none; padding:6px 10px; border-radius:${SIZES.BORDER_RADIUS}; cursor:pointer; font-weight:bold; white-space:nowrap;">✕ Fermer</button>
                 </div>
             </div>
             ${generateDashboardLegend()}
@@ -684,7 +685,7 @@
         return `
             <div style="display:flex; gap:16px; font-size:10px; color:${COLORS.GRAY_TEXT}; padding:8px 0; border-bottom:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
                 <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.SUCCESS};margin-right:5px;vertical-align:middle;"></span>Nouveau</span>
-                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Impacté ou Supprimé</span>
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Impacté</span>
                 <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.NEUTRAL};margin-right:5px;vertical-align:middle;"></span>Sans changement</span>
             </div>
         `;
@@ -995,6 +996,7 @@
         STATE.lastActiveFilters = [];
         STATE.lastGridData = {};
         E('r-ct').textContent = "0 / 0";
+        E('r-af-cnt').textContent = "0";
         E('r-f-cnt').textContent = "0";
         E('r-pv').textContent = "-";
         E('r-pv').style.display = "none";
@@ -1113,6 +1115,7 @@
         removeAllTargetCircles();
 
         if (hasNoTargets()) {
+            setNavButtonsEnabled(false);
             displayEmptyState(statusSpan, previewDiv);
             return;
         }
@@ -1120,11 +1123,18 @@
         previewDiv.style.display = "block";
 
         if (isGlobalMode()) {
-            displayGlobalMode();
+            setNavButtonsEnabled(false);
+            displayGlobalMode(statusSpan, previewDiv);
             return;
         }
 
+        setNavButtonsEnabled(true);
         displayTargetMode(idx, statusSpan, previewDiv, skipZoom);
+    }
+
+    function setNavButtonsEnabled(enabled) {
+        E('r-p').disabled = enabled === false;
+        E('r-nx').disabled = enabled === false;
     }
 
     function removeAllTargetCircles() {
@@ -1137,7 +1147,7 @@
         previewDiv.style.display = "none";
     }
 
-    function displayGlobalMode() {
+    function displayGlobalMode(statusSpan, previewDiv) {
         let globalCoords = [];
         STATE.targets.forEach(el => {
             const center = getComponentCenter(el);
@@ -1149,6 +1159,9 @@
             const group = el.closest('g');
             group.appendChild(createSVGCircle(CSS.TARGET_CIRCLE, center.x, center.y));
         });
+
+        statusSpan.textContent = globalCoords.length + " affiché(s)";
+        previewDiv.textContent = globalCoords.length + " élément(s) mis en évidence sur la carte";
     }
 
     function displayTargetMode(idx, statusSpan, previewDiv, skipZoom) {
@@ -1252,6 +1265,7 @@
     }
 
     function handleNoActiveFilters() {
+        E('r-af-cnt').textContent = "0";
         E('r-f-cnt').textContent = "0";
         STATE.lastActiveFilters = [];
         STATE.lastGridData = {};
@@ -1302,6 +1316,7 @@
     }
 
     function updateFilterUI(totalCount, activeFilters, gridData, query = '') {
+        E('r-af-cnt').textContent = activeFilters.length;
         E('r-f-cnt').textContent = totalCount;
         updateDashboardSubtitle(query);
 
@@ -1365,9 +1380,18 @@
     }
 
     function generateNormalItem(item, filterColor) {
-        const dot = hasStatus(item) ? `<span style="display:inline-block; width:${SIZES.DOT}px; height:${SIZES.DOT}px; min-width:${SIZES.DOT}px; border-radius:50%; background:${item.st.c}; margin-right:6px;"></span>` : '';
+        const dot = hasStatus(item) ? `<span style="display:inline-block; width:${SIZES.DOT}px; height:${SIZES.DOT}px; min-width:${SIZES.DOT}px; border-radius:50%; background:${item.st.c}; margin-right:6px; vertical-align:middle;"></span>` : '';
+        const badge = generateStatusBadge(item);
         const title = (hasStatus(item) ? item.st.label + ' — ' : '') + item.t;
-        return `<div class="r-it" style="border-left:3px solid ${filterColor} !important;" title="${title}">${dot}${item.t}</div>`;
+        return `<div class="r-it" style="border-left:3px solid ${filterColor} !important;" title="${title}">${dot}${badge}${item.t}</div>`;
+    }
+
+    function generateStatusBadge(item) {
+        if (hasStatus(item) === false) return '';
+        if (item.st.s !== 'N' && item.st.s !== 'I') return '';
+
+        const label = item.st.s === 'N' ? 'NOUV.' : 'IMP.';
+        return `<span style="display:inline-block; font-size:8px; font-weight:bold; color:white; background:${item.st.c}; padding:1px 4px; border-radius:3px; margin-right:5px; vertical-align:middle; letter-spacing:0.3px;">${label}</span>`;
     }
 
     function performInitialSearch() {
