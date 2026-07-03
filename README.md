@@ -37,8 +37,14 @@ Pour contourner les limitations de taille et de formatage de l'IHM de Edge/Chrom
 
 ### 1. **Recherche rapide**
 - Saisissez un terme dans la barre de recherche pour **surligner les éléments SVG** correspondants.
-- Utilisez les boutons **◀ Préc** et **Suiv ▶** pour naviguer entre les résultats.
+- Utilisez les boutons **◀ Préc** et **Suiv ▶** (ou les flèches **← →** du clavier) pour naviguer entre les résultats.
 - Le compteur affiche la position actuelle / nombre total de résultats.
+- **Entrée** valide la recherche immédiatement, sans attendre.
+
+**Recherche multi-termes (ET / OU)** : la barre de recherche accepte plusieurs mots-clés.
+- Un espace entre deux mots = **ET** (les deux doivent être présents). Ex. `eip test` → ne remonte que les éléments contenant à la fois "eip" et "test".
+- `OU` (ou `,` / `or`) sépare des alternatives. Ex. `eip test OU batch` → remonte les éléments qui matchent le premier groupe **ou** le second.
+- Ces opérateurs fonctionnent aussi bien pour la recherche seule que pour la recherche croisée avec les filtres (voir ci-dessous).
 
 ### 2. **Modes de visualisation**
 - **🎯 Ciblé** : Centre la vue sur l'élément sélectionné.
@@ -94,6 +100,16 @@ Chaque modification est **automatiquement sauvegardée dans le localStorage de v
 ### 8. **Fermeture complète**
 - Cliquez sur **✕** pour supprimer toutes les instances de **Sniper Map**.
 
+### 9. **Raccourcis clavier**
+| Touche | Action |
+|--------|--------|
+| **Entrée** (dans la recherche) | Lance la recherche immédiatement |
+| **←** | Résultat précédent |
+| **→** | Résultat suivant |
+| **Échap** | Ferme le dashboard |
+
+> Les flèches ← → ne fonctionnent que lorsque le focus n'est pas dans un champ de saisie (recherche, gestion des filtres...), pour ne pas gêner l'édition de texte.
+
 ---
 
 ## 🎨 Charte graphique
@@ -114,7 +130,7 @@ Chaque modification est **automatiquement sauvegardée dans le localStorage de v
 hopex-search-component/
 ├── README.md               # Documentation
 ├── install.html            # Page d'installation automatique (Drag & Drop)
-└── sniper-map.js           # Code source non minifié du bookmarklet (V37)
+└── sniper-map.js           # Code source non minifié du bookmarklet (V38)
 ```
 
 ### Contribuer
@@ -130,6 +146,7 @@ hopex-search-component/
 
 | Version | Date       | Description                                                                                     |
 |---------|------------|-------------------------------------------------------------------------------------------------|
+| V0.0.38    | 2026-07-03 | **Nouveautés** : recherche multi-termes avec opérateurs ET (espace) / OU (`OU`, `,`, `or`), raccourcis clavier de navigation (Entrée pour rechercher, ← → pour naviguer entre les résultats). |
 | V0.0.37    | 2026-07-02 | **Correctif** : les flux (identifiés par un code du type `NNNNN - Libellé`) n'étaient plus détectés en recherche ni en filtrage, à cause d'une exclusion trop large destinée aux légendes. **Nouveautés** : export CSV des résultats du dashboard, croisement recherche texte + filtres actifs, import/export JSON de la configuration des filtres (partage d'équipe). |
 | V0.0.36    | 2026-07-02 | Ajout de la **gestion CRUD des filtres** (créer, éditer, supprimer, réinitialiser) via une fenêtre dédiée, avec **sauvegarde automatique en localStorage** pour conserver les filtres personnalisés d'une session à l'autre. |
 | V0.0.35    | 2026-07-01 | Intégration de `install.html`. Résolution définitive du bug `Unexpected end of input` lié à l'IHM des navigateurs et aux commentaires monolignes. |
