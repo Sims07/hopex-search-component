@@ -1,5 +1,5 @@
 /**
- * 🎯 SNIPER MAP - Version 37 (Filtres CRUD + Export CSV + Recherche croisée + Import/Export filtres)
+ * 🎯 SNIPER MAP - Version 38 (+ Recherche multi-termes ET/OU + Raccourcis clavier)
  * Outil d'aide à la navigation, filtrage SVG et analyse pour Mega Hopex.
  * Charte graphique : Design System Ameli (Clair).
  */
@@ -203,6 +203,27 @@
         return text.toLowerCase().includes(query);
     }
 
+    // Découpe une requête en groupes "OU", chaque groupe étant une liste de termes "ET".
+    // Ex: "EIP paiement OU batch" -> [["eip","paiement"], ["batch"]]
+    // Séparateurs OU acceptés : "ou", "or", ",". Le mot "et"/"and" est ignoré (ET déjà implicite via l'espace).
+    function parseSearchQuery(rawQuery) {
+        const query = (rawQuery || '').trim().toLowerCase();
+        if (query === '') return [];
+
+        return query
+            .split(/\s*(?:,|\bou\b|\bor\b)\s*/i)
+            .map(group => group.trim())
+            .filter(group => group.length > 0)
+            .map(group => group.split(/\s+/).filter(term => term.length > 0 && /^(et|and)$/i.test(term) === false))
+            .filter(terms => terms.length > 0);
+    }
+
+    // Un texte matche si AU MOINS UN groupe OU a TOUS ses termes ET présents dans le texte.
+    function textMatchesQuery(text, orGroups) {
+        if (orGroups.length === 0) return true;
+        return orGroups.some(andTerms => andTerms.every(term => matchesSearchQuery(text, term)));
+    }
+
     function isControlButton(elementId) {
         return ['r-mn', 'r-rst', 'r-c'].includes(elementId);
     }
@@ -400,6 +421,24 @@
         return key === 'Escape';
     }
 
+    function isEnterKey(key) {
+        return key === 'Enter';
+    }
+
+    function isArrowLeftKey(key) {
+        return key === 'ArrowLeft';
+    }
+
+    function isArrowRightKey(key) {
+        return key === 'ArrowRight';
+    }
+
+    function isEditableElement(el) {
+        if (el === null || el === undefined) return false;
+        const tag = el.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+    }
+
     function isValidResizeWidth(width, minWidth, maxWidth) {
         return width > minWidth && width < maxWidth;
     }
@@ -557,7 +596,7 @@
     function generatePanelHTML() {
         return `
             <div class="${CSS.DRAGGABLE}" style="font-weight:bold; color:${COLORS.PRIMARY}; margin-bottom:8px; font-size:12px; display:flex; justify-content:space-between; border-bottom:1px solid ${COLORS.BORDER}; padding-bottom:8px;">
-                <span>🎯 SNIPER MAP V37</span>
+                <span>🎯 SNIPER MAP V38</span>
                 <div style="cursor:pointer; display:flex; gap:10px; font-family:monospace;">
                     <span id="r-rst" style="color:${COLORS.SECONDARY}">↺ Reset</span>
                     <span id="r-mn">─</span>
@@ -565,14 +604,15 @@
                 </div>
             </div>
             <div style="margin-bottom:6px;">
-                <input type="text" id="r-s" placeholder="Rechercher un composant...">
+                <input type="text" id="r-s" placeholder="Rechercher... (ex: eip paiement OU batch)">
+                <div style="font-size:${SIZES.FONT_SM}; color:${COLORS.GRAY_TEXT}; margin:2px 0 6px 0;">↵ Rechercher · ← → Naviguer · espace = ET, OU = alternative</div>
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
                     <span>Mode: <button id="r-m" style="background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; padding:2px 6px; font-weight:bold;">🎯 Ciblé</button></span>
                     <span id="r-ct" style="color:${COLORS.PRIMARY}; font-weight:bold;">0 / 0</span>
                 </div>
                 <div style="display:flex; gap:4px; margin-bottom:8px;">
-                    <button id="r-p" style="background:${COLORS.BORDER}; color:${COLORS.DARK_TEXT}; flex:1;">◀ Préc</button>
-                    <button id="r-nx" style="background:${COLORS.PRIMARY}; font-weight:bold; flex:1;">Suiv ▶</button>
+                    <button id="r-p" style="background:${COLORS.BORDER}; color:${COLORS.DARK_TEXT}; flex:1;" title="Raccourci : ←">◀ Préc</button>
+                    <button id="r-nx" style="background:${COLORS.PRIMARY}; font-weight:bold; flex:1;" title="Raccourci : →">Suiv ▶</button>
                 </div>
             </div>
             <div style="background:${COLORS.LIGHT_GRAY}; padding:${SIZES.PADDING_MD}; border-radius:${SIZES.BORDER_RADIUS}; border:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
@@ -785,6 +825,7 @@
         attachNavigationButtonListeners();
         attachModeToggleListener();
         attachFilterManagerListeners();
+        attachKeyboardShortcuts();
     }
 
     function attachPanelDragListeners() {
@@ -867,11 +908,32 @@
             STATE.searchTimeout = setTimeout(handleSearchChange, ANIMATION.SEARCH_DEBOUNCE_MS);
         };
         E('r-s').onfocus = function() { this.select(); };
+        E('r-s').onkeydown = (e) => {
+            if (isEnterKey(e.key) === false) return;
+            e.preventDefault();
+            clearTimeout(STATE.searchTimeout);
+            handleSearchChange();
+        };
     }
 
     function handleSearchChange() {
         searchMapText();
         runFilters();
+    }
+
+    function attachKeyboardShortcuts() {
+        D.addEventListener('keydown', (e) => {
+            if (isEditableElement(e.target)) return;
+            if (hasNoTargets()) return;
+
+            if (isArrowRightKey(e.key)) {
+                e.preventDefault();
+                updateNavigationUI(STATE.currentIndex + 1);
+            } else if (isArrowLeftKey(e.key)) {
+                e.preventDefault();
+                updateNavigationUI(STATE.currentIndex - 1);
+            }
+        });
     }
 
     function attachNavigationButtonListeners() {
@@ -1130,13 +1192,14 @@
     }
 
     function performSearch(query) {
+        const orGroups = parseSearchQuery(query);
         const savedPoints = [];
         
         Q('svg text, svg tspan').forEach(el => {
             const group = el.closest('g');
             if (componentHasNoGroup(el)) return;
 
-            if (matchesSearchQuery(group.textContent, query)) {
+            if (textMatchesQuery(group.textContent, orGroups)) {
                 const center = getComponentCenter(el);
                 if (hasInvalidCenter(center)) return;
 
@@ -1201,6 +1264,7 @@
         const gridData = {};
         const filterCoords = [];
         const statusCache = buildStatusShapeStrokeCache();
+        const orGroups = parseSearchQuery(query);
 
         activeFilters.forEach(a => gridData[a.id] = []);
 
@@ -1211,7 +1275,7 @@
             const match = findMatchingFilter(group, activeFilters);
             if (match === undefined) return;
 
-            if (query && matchesSearchQuery(group.textContent, query) === false) return;
+            if (textMatchesQuery(group.textContent, orGroups) === false) return;
 
             const center = getComponentCenter(el);
             if (hasInvalidCenter(center)) return;
