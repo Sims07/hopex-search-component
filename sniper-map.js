@@ -685,7 +685,7 @@
         return `
             <div style="display:flex; gap:16px; font-size:10px; color:${COLORS.GRAY_TEXT}; padding:8px 0; border-bottom:1px solid ${COLORS.BORDER}; margin-bottom:6px;">
                 <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.SUCCESS};margin-right:5px;vertical-align:middle;"></span>Nouveau</span>
-                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Impacté</span>
+                <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.WARNING};margin-right:5px;vertical-align:middle;"></span>Impacté et Supprimé</span>
                 <span><span style="display:inline-block;width:${SIZES.SMALL_DOT}px;height:${SIZES.SMALL_DOT}px;border-radius:50%;background:${COLORS.NEUTRAL};margin-right:5px;vertical-align:middle;"></span>Sans changement</span>
             </div>
         `;
