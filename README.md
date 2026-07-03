@@ -42,13 +42,13 @@ Pour contourner les limitations de taille et de formatage de l'IHM de Edge/Chrom
 - **Entrée** valide la recherche immédiatement, sans attendre.
 
 **Recherche multi-termes (ET / OU)** : la barre de recherche accepte plusieurs mots-clés.
-- Un espace entre deux mots = **ET** (les deux doivent être présents). Ex. `eip test` → ne remonte que les éléments contenant à la fois "eip" et "test".
-- `OU` (ou `,` / `or`) sépare des alternatives. Ex. `eip test OU batch` → remonte les éléments qui matchent le premier groupe **ou** le second.
+- Un espace entre deux mots = **ET** (les deux doivent être présents). Ex. `eip paiement` → ne remonte que les éléments contenant à la fois "eip" et "paiement".
+- `OU` (ou `,` / `or`) sépare des alternatives. Ex. `eip paiement OU batch` → remonte les éléments qui matchent le premier groupe **ou** le second.
 - Ces opérateurs fonctionnent aussi bien pour la recherche seule que pour la recherche croisée avec les filtres (voir ci-dessous).
 
 ### 2. **Modes de visualisation**
-- **🎯 Ciblé** : Centre la vue sur l'élément sélectionné.
-- **🌐 Global** : Affiche tous les résultats avec des cercles clignotants.
+- **🎯 Ciblé** : Centre la vue sur l'élément sélectionné, navigation résultat par résultat avec **◀ Préc** / **Suiv ▶** (ou les flèches clavier). Le compteur affiche la position actuelle (ex. `3 / 17`).
+- **🌐 Global** : Affiche tous les résultats en même temps avec des cercles clignotants, sans zoom sur un élément en particulier. Le compteur affiche alors le nombre total d'éléments mis en évidence (ex. `17 affiché(s)`), et les boutons **◀ Préc** / **Suiv ▶** sont désactivés puisque la navigation séquentielle n'a pas de sens quand tout est déjà visible à l'écran.
 
 ### 3. **Filtrage par technologie**
 Activez/désactivez les filtres pour :
@@ -130,7 +130,7 @@ Chaque modification est **automatiquement sauvegardée dans le localStorage de v
 hopex-search-component/
 ├── README.md               # Documentation
 ├── install.html            # Page d'installation automatique (Drag & Drop)
-└── sniper-map.js           # Code source non minifié du bookmarklet (V38)
+└── sniper-map.js           # Code source non minifié du bookmarklet (V40)
 ```
 
 ### Contribuer
@@ -146,6 +146,8 @@ hopex-search-component/
 
 | Version | Date       | Description                                                                                     |
 |---------|------------|-------------------------------------------------------------------------------------------------|
+| V0.0.40    | 2026-07-03 | **Correctif** : en mode Global, le compteur de résultats et l'aperçu restaient figés (souvent sur "0 / 0") au lieu de refléter le nombre d'éléments affichés. Le compteur indique désormais `X affiché(s)`, et les boutons ◀ Préc / Suiv ▶ se désactivent en mode Global (navigation séquentielle non pertinente). |
+| V0.0.39    | 2026-07-03 | **Correctifs UX** : indice clavier illisible (glyphe non supporté) remplacé par du texte, compteur "Actifs" trompeur désormais séparé en "filtre(s) actif(s)" / "résultat(s)", boutons ◀ Préc / Suiv ▶ visuellement désactivés quand il n'y a aucun résultat, titre du dashboard qui se cassait sur deux lignes corrigé, ajout d'un badge texte (NOUV. / IMP.) en complément du point de couleur pour l'accessibilité (daltonisme). |
 | V0.0.38    | 2026-07-03 | **Nouveautés** : recherche multi-termes avec opérateurs ET (espace) / OU (`OU`, `,`, `or`), raccourcis clavier de navigation (Entrée pour rechercher, ← → pour naviguer entre les résultats). |
 | V0.0.37    | 2026-07-02 | **Correctif** : les flux (identifiés par un code du type `NNNNN - Libellé`) n'étaient plus détectés en recherche ni en filtrage, à cause d'une exclusion trop large destinée aux légendes. **Nouveautés** : export CSV des résultats du dashboard, croisement recherche texte + filtres actifs, import/export JSON de la configuration des filtres (partage d'équipe). |
 | V0.0.36    | 2026-07-02 | Ajout de la **gestion CRUD des filtres** (créer, éditer, supprimer, réinitialiser) via une fenêtre dédiée, avec **sauvegarde automatique en localStorage** pour conserver les filtres personnalisés d'une session à l'autre. |
