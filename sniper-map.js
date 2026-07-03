@@ -606,7 +606,7 @@
             </div>
             <div style="margin-bottom:6px;">
                 <input type="text" id="r-s" placeholder="Rechercher... (ex: eip paiement OU batch)">
-                <div style="font-size:${SIZES.FONT_XS}; color:${COLORS.GRAY_TEXT}; margin:2px 0 6px 0;">Entrée : rechercher · ← → : naviguer · espace = ET, OU = alternative</div>
+                <div style="font-size:${SIZES.FONT_SM}; color:${COLORS.GRAY_TEXT}; margin:2px 0 6px 0;">↵ Rechercher · ← → Naviguer · espace = ET, OU = alternative</div>
                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; margin-bottom:6px;">
                     <span>Mode: <button id="r-m" style="background:${COLORS.BORDER}; color:${COLORS.PRIMARY}; padding:2px 6px; font-weight:bold;">🎯 Ciblé</button></span>
                     <span id="r-ct" style="color:${COLORS.PRIMARY}; font-weight:bold;">0 / 0</span>
